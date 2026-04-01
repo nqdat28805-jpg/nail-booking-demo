@@ -67,9 +67,9 @@ export default function Home() {
                   The Ethereal Atelier
                 </p>
                 <h1 className="font-serif text-[3.15rem] italic leading-[1.04] tracking-[-0.04em] text-[#1c1b1a] md:text-[4.8rem]">
-                  Vẻ đẹp tinh tuyển
+                  Nét đẹp bắt đầu từ những chi tiết nhỏ
                   <br />
-                  trong từng nét móng
+                  Xinh từ đầu ngón tay
                 </h1>
                 <p className="max-w-[18rem] text-base font-light leading-7 text-[#514443] md:max-w-[21rem] md:text-lg">
                   Một không gian làm móng tinh tế, nơi từng chi tiết được chăm

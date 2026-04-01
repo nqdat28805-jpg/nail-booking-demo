@@ -22,6 +22,12 @@ function createBookingReference(
   return `NL-${datePart}-${phonePart}`;
 }
 
+const paymentMethods = [
+  "Chuyển khoản",
+  "Thẻ nội địa",
+  "Thanh toán tại salon",
+] as const;
+
 export function ConfirmationExperience() {
   const [bookingDraft, setBookingDraft] = useState<PersistedBookingDraft | null>(
     () => readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY),
@@ -30,6 +36,10 @@ export function ConfirmationExperience() {
     () => readStoredJson<PersistedGuestDetailsDraft>(GUEST_DETAILS_STORAGE_KEY),
   );
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    (typeof paymentMethods)[number]
+  >("Thanh toán tại salon");
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   useEffect(() => {
     const syncDrafts = () => {
@@ -197,49 +207,88 @@ export function ConfirmationExperience() {
                     Mô phỏng bước thanh toán cho bản demo public flow.
                   </p>
                 </div>
-                <span className="inline-flex rounded-full bg-[#f7efe7] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6a20]">
-                  Chưa thanh toán
+                <span
+                  className={[
+                    "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
+                    paymentCompleted
+                      ? "bg-[#edf4ec] text-[#56724d]"
+                      : "bg-[#f7efe7] text-[#9a6a20]",
+                  ].join(" ")}
+                >
+                  {paymentCompleted ? "Đã thanh toán" : "Chưa thanh toán"}
                 </span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                {["Chuyển khoản", "Thẻ nội địa", "Thanh toán tại salon"].map(
-                  (method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      className="rounded-[1rem] border border-border/70 bg-[#fbf8f6] px-4 py-4 text-left transition hover:border-primary/20 hover:bg-white"
-                    >
-                      <span className="block text-sm font-semibold text-foreground">
-                        {method}
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-text-muted">
-                        Tuỳ chọn minh hoạ để demo trạng thái sau xác nhận.
-                      </span>
-                    </button>
-                  ),
-                )}
-              </div>
+              {paymentCompleted ? (
+                <div className="rounded-[1rem] border border-[#dbe8d7] bg-[linear-gradient(135deg,rgba(237,244,236,0.95)_0%,rgba(255,255,255,1)_100%)] p-5 shadow-[0_10px_30px_rgba(86,114,77,0.08)]">
+                  <div className="flex items-start gap-4">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#edf4ec] text-[#56724d]">
+                      ✓
+                    </span>
+                    <div className="min-w-0">
+                      <h4 className="font-serif text-xl text-foreground">
+                        Hoàn tất thanh toán
+                      </h4>
+                      <p className="mt-1 text-sm leading-6 text-text-muted">
+                        Trạng thái thanh toán đã được cập nhật thành công cho bản demo.
+                      </p>
+                      <div className="mt-4 space-y-2">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#56724d]">
+                          Trạng thái thanh toán: Đã thanh toán
+                        </p>
+                        <p className="text-sm text-foreground">
+                          Phương thức: {selectedPaymentMethod}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {paymentMethods.map((method) => {
+                      const isSelected = method === selectedPaymentMethod;
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  className="flex-1 rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_32px_rgba(127,82,83,0.12)] transition-transform active:scale-[0.99]"
-                >
-                  Tiến hành thanh toán
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-primary/15 px-6 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition hover:bg-[#f7f3f0]"
-                >
-                  Thanh toán sau
-                </button>
-              </div>
+                      return (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethod(method)}
+                          aria-pressed={isSelected}
+                          className={[
+                            "rounded-[1rem] border px-4 py-4 text-left transition",
+                            isSelected
+                              ? "border-primary/25 bg-[linear-gradient(135deg,rgba(217,162,162,0.16)_0%,rgba(255,255,255,0.98)_100%)] shadow-[0_10px_24px_rgba(127,82,83,0.08)]"
+                              : "border-border/70 bg-[#fbf8f6] hover:border-primary/20 hover:bg-white",
+                          ].join(" ")}
+                        >
+                          <span className="block text-sm font-semibold text-foreground">
+                            {method}
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-text-muted">
+                            {method === "Thanh toán tại salon"
+                              ? "Thanh toán trực tiếp tại quầy khi đến lịch hẹn."
+                              : "Tuỳ chọn minh hoạ để demo trạng thái thanh toán."}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              <p className="mt-4 text-xs leading-6 text-text-muted">
-                Vui lòng đến sớm 5 phút để salon sắp xếp chỗ ngồi. Khối thanh toán
-                này hiện là mock frontend-only cho mục đích demo.
-              </p>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentCompleted(true)}
+                    className="mt-6 w-full rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_32px_rgba(127,82,83,0.12)] transition-transform active:scale-[0.99]"
+                  >
+                    Tiến hành thanh toán
+                  </button>
+
+                  <p className="mt-4 text-xs leading-6 text-text-muted">
+                    Vui lòng đến sớm 5 phút để salon sắp xếp chỗ ngồi. Khối thanh
+                    toán này hiện là mock frontend-only cho mục đích demo.
+                  </p>
+                </>
+              )}
             </section>
 
             <footer className="flex flex-col gap-4">

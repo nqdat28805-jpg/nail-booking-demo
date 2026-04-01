@@ -18,6 +18,25 @@
 - Đã fix hydration mismatch trên `/dat-lich` bằng cách làm initial render SSR-safe và restore booking draft sau mount
 - Đã áp dụng feedback client mới cho public flow: chỉnh occupancy Step 2, đơn giản hóa Step 3 và đổi lại cấu trúc confirmation kèm payment mock
 - Đã align lại header của landing page để dùng cùng visual system với Step 2, Step 3 và confirmation
+- Đã cập nhật payment mock trên màn xác nhận để có trạng thái hoàn tất thanh toán rõ ràng hơn khi demo
+- Đã cập nhật headline hero trên landing page theo copy tiếng Việt mới
+
+## Latest landing hero copy update
+- Headline hero của route `/` đã được thay bằng copy mới: `Nét đẹp bắt đầu từ những chi tiết nhỏ / Xinh từ đầu ngón tay`
+
+## Files changed in latest landing hero copy update
+- `app/page.tsx`
+- `docs/resume.md`
+
+## Latest payment block update
+- Đã xoá hoàn toàn nút `Thanh toán sau`
+- Giữ `Thanh toán tại salon` như một phương thức thanh toán offline trong nhóm lựa chọn
+- Nút `Tiến hành thanh toán` giờ kích hoạt success state ngay trên cùng page với nội dung `Hoàn tất thanh toán` và trạng thái `Đã thanh toán`
+- Success state hiển thị lại phương thức thanh toán đã chọn trong cùng visual language hiện tại
+
+## Files changed in latest payment mock update
+- `app/dat-lich/xac-nhan/_components/confirmation-experience.tsx`
+- `docs/resume.md`
 
 ## Latest landing header alignment
 - Header của route `/` giờ dùng cùng shell với các page còn lại: cùng spacing `px-6 py-4`, brand căn giữa trong `max-w-lg`, typography `19NAIL.STUDIO` đồng nhất và dot nhỏ bên phải
