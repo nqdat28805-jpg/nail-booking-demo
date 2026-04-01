@@ -16,6 +16,47 @@
 - Đã nâng cấp mock availability engine cho `/dat-lich`: lịch tháng động nhiều tháng, artist mode/pool mode, service configurator, duration estimator theo SRS và slot-fit engine theo khoảng trống liên tục
 - Đã refine lại Step 2 `/dat-lich` theo product requirement mới: thứ tự `calendar -> dịch vụ -> thợ -> khung giờ`, heading/copy gọn hơn, control dịch vụ mới và slot occupancy trực quan hơn
 - Đã fix hydration mismatch trên `/dat-lich` bằng cách làm initial render SSR-safe và restore booking draft sau mount
+- Đã áp dụng feedback client mới cho public flow: chỉnh occupancy Step 2, đơn giản hóa Step 3 và đổi lại cấu trúc confirmation kèm payment mock
+- Đã align lại header của landing page để dùng cùng visual system với Step 2, Step 3 và confirmation
+
+## Latest landing header alignment
+- Header của route `/` giờ dùng cùng shell với các page còn lại: cùng spacing `px-6 py-4`, brand căn giữa trong `max-w-lg`, typography `19NAIL.STUDIO` đồng nhất và dot nhỏ bên phải
+- Hero và các section landing được giữ nguyên; chỉ chỉnh phần header để toàn bộ public flow trông như cùng một product
+- Không tạo shared header component mới trong pass này; chỉ cập nhật trực tiếp landing header để giữ thay đổi nhỏ và an toàn
+
+## Files changed in latest landing header alignment
+- `app/page.tsx`
+- `docs/resume.md`
+
+## Latest client feedback applied
+- `/dat-lich`: đổi label back link thành `Về trang chủ`, tăng khoảng đệm cuối trang để slot grid cuộn hết dưới mobile, và làm continuation slots trong block đã chọn trở nên rõ ràng hơn cũng như không còn tappable
+- `/dat-lich/thong-tin`: bỏ toàn bộ service re-selection; bước này giờ chỉ cho nhập `Họ tên`, `Số điện thoại`, `Ghi chú`, còn toàn bộ ngày giờ/thợ/dịch vụ giữ ở summary read-only từ Step 2
+- `/dat-lich/xac-nhan`: gộp số điện thoại vào block `Thông tin đặt lịch`, xoá riêng block `Thông tin khách` và `Thông tin salon`, thêm block `Thanh toán` mock để demo
+
+## Latest slot occupancy logic fix
+- Khi người dùng chọn start slot, toàn bộ block 30 phút tương ứng với thời lượng dịch vụ giờ được hiển thị là occupied range liên tục
+- Continuation slots trong occupied range không còn trông như còn chọn được, giúp tránh trường hợp dịch vụ `60 phút` nhìn như chỉ chiếm `1` ô 30 phút
+- Slot panel đã có thêm spacing đáy để hàng slot cuối không bị sticky summary che mất trên mobile
+
+## Latest Step 3 simplification
+- Form Step 3 chỉ còn 3 field chỉnh sửa được: `Họ tên`, `Số điện thoại`, `Ghi chú`
+- Service selections không còn bị lặp lại ở Step 3
+- Dữ liệu read-only từ Step 2 gồm: ngày, giờ bắt đầu, giờ kết thúc, thời lượng, thợ và dịch vụ đã chọn
+
+## Latest confirmation structure changes
+- Main block `Thông tin đặt lịch` giờ gồm thêm `Số điện thoại`
+- Đã xoá riêng section `Thông tin khách`
+- Đã xoá riêng section `Thông tin salon`
+- Đã thêm block `Thanh toán` mock với trạng thái `Chưa thanh toán`, phương thức minh hoạ và CTA demo
+
+## Files changed in latest client feedback pass
+- `app/dat-lich/_components/booking-experience.tsx`
+- `app/dat-lich/_components/slot-panel.tsx`
+- `app/dat-lich/thong-tin/_components/guest-details-experience.tsx`
+- `app/dat-lich/thong-tin/_components/guest-summary-card.tsx`
+- `app/dat-lich/xac-nhan/_components/confirmation-experience.tsx`
+- `app/dat-lich/booking-mock.ts`
+- `docs/resume.md`
 
 ## Booking data now stored
 - `sessionStorage` key: `nail-booking-draft`

@@ -331,7 +331,7 @@ export function BookingExperience() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-36">
+    <div className="min-h-screen bg-background pb-56">
       <header className="fixed inset-x-0 top-0 z-50 bg-[#fdf9f6]/80 px-6 py-4 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <Link
@@ -354,7 +354,7 @@ export function BookingExperience() {
             className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary"
           >
             <span aria-hidden="true">←</span>
-            Về landing
+            Về trang chủ
           </Link>
           <div className="space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">

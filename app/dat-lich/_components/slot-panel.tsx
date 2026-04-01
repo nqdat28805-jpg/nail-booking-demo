@@ -32,9 +32,10 @@ export function SlotPanel({
     (availableCount === 0 && hasInsufficientDuration);
   const occupiedSlotCount = Math.max(1, Math.ceil(blockedDurationMinutes / 30));
   const anchorSlot = heldSlot ?? selectedSlot;
+  const hasOccupiedRange = occupiedSlotTimes.length > 1;
 
   return (
-    <section className="space-y-4 pb-2">
+    <section className="space-y-4 pb-28 sm:pb-32">
       <div className="space-y-1 px-2">
         <h2 className="font-serif text-lg text-primary">Khung giờ khả dụng</h2>
         <p className="text-xs uppercase tracking-[0.16em] text-text-muted">
@@ -50,6 +51,12 @@ export function SlotPanel({
           label="Không đủ thời lượng"
           className="bg-[#f6e6cf] text-[#9a6a20]"
         />
+        {hasOccupiedRange ? (
+          <LegendPill
+            label="Đang chiếm chỗ"
+            className="bg-[#fbefef] text-[#8a5d5f]"
+          />
+        ) : null}
       </div>
 
       {heldSlot && holdCountdownLabel ? (
@@ -129,7 +136,7 @@ export function SlotPanel({
           const isSelectedStart = selectedSlot === slot.time && !heldSlot;
           const isOccupiedContinuation =
             occupiedSlotTimes.includes(slot.time) && anchorSlot !== slot.time;
-          const isDisabled = slot.state !== "available";
+          const isDisabled = slot.state !== "available" || isOccupiedContinuation;
 
           return (
             <button

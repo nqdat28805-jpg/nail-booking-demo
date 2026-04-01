@@ -5,8 +5,6 @@ type GuestSummaryCardProps = {
   durationMinutes: number;
   staffName: string;
   serviceLabel: string;
-  guestCount: string;
-  setCount: string;
 };
 
 export function GuestSummaryCard({
@@ -16,8 +14,6 @@ export function GuestSummaryCard({
   durationMinutes,
   staffName,
   serviceLabel,
-  guestCount,
-  setCount,
 }: GuestSummaryCardProps) {
   return (
     <section className="mb-12">
@@ -49,7 +45,7 @@ export function GuestSummaryCard({
                 {serviceLabel}
               </p>
               <p className="mt-0.5 text-xs text-[#8e807c]">
-                {durationMinutes} phút • {guestCount} • {setCount}
+                {durationMinutes} phút • Đồng bộ từ bước chọn lịch
               </p>
             </div>
           </div>

@@ -24,12 +24,12 @@ const footerLinks = ["Services", "Gallery"];
 export default function Home() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fdf9f6] text-[#1c1b1a]">
-      <header className="fixed inset-x-0 top-0 z-50 bg-[#fdf9f6]/80 shadow-[0_12px_40px_rgba(127,82,83,0.06)] backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+      <header className="fixed inset-x-0 top-0 z-50 bg-[#fdf9f6]/80 px-6 py-4 shadow-sm backdrop-blur-xl">
+        <div className="mx-auto flex max-w-lg items-center justify-between">
           <button
             type="button"
             aria-label="Menu"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-[#7f5253]"
+            className="flex h-6 w-6 items-center justify-center text-primary transition hover:opacity-70"
           >
             <span className="flex flex-col gap-1">
               <span className="block h-[1.5px] w-3 bg-current" />
@@ -37,10 +37,12 @@ export default function Home() {
               <span className="block h-[1.5px] w-3 bg-current" />
             </span>
           </button>
-          <span className="font-serif text-[1.05rem] font-bold uppercase tracking-[-0.02em] text-[#7f5253]">
+          <span className="font-serif text-xl tracking-[-0.02em] text-primary">
             19NAIL.STUDIO
           </span>
-          <span className="w-10" aria-hidden="true" />
+          <span className="w-4 text-right text-xs text-primary" aria-hidden="true">
+            •
+          </span>
         </div>
       </header>
 

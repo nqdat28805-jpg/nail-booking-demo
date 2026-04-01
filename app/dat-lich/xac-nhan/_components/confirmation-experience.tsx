@@ -162,6 +162,10 @@ export function ConfirmationExperience() {
                   value={guestDraft.fullName}
                 />
                 <ConfirmationRow
+                  label="Số điện thoại"
+                  value={guestDraft.phone}
+                />
+                <ConfirmationRow
                   label="Dịch vụ"
                   value={guestDraft.serviceLabel || "Dịch vụ móng theo yêu cầu"}
                   detail={`${guestDraft.guestCount} • ${guestDraft.setCount}`}
@@ -183,61 +187,59 @@ export function ConfirmationExperience() {
               </div>
             </section>
 
-            <section className="mb-8 rounded-[1.1rem] bg-[#f7f3f0] p-5 shadow-[0_12px_40px_rgba(127,82,83,0.04)]">
-              <div className="flex items-start gap-4">
-                <span className="mt-0.5 text-primary">i</span>
+            <section className="mb-12 rounded-[1.1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
+              <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground">
-                    Lưu ý từ salon
+                  <h3 className="font-serif text-xl text-foreground">
+                    Thanh toán
                   </h3>
-                  <p className="text-xs leading-relaxed text-text-muted">
-                    Vui lòng đến sớm 5 phút để salon sắp xếp chỗ ngồi. Mã lịch
-                    hẹn và nội dung nhắc hẹn hiện là dữ liệu mô phỏng cục bộ cho
-                    bản demo public flow.
+                  <p className="mt-1 text-sm leading-6 text-text-muted">
+                    Mô phỏng bước thanh toán cho bản demo public flow.
                   </p>
                 </div>
+                <span className="inline-flex rounded-full bg-[#f7efe7] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6a20]">
+                  Chưa thanh toán
+                </span>
               </div>
-            </section>
 
-            <section className="mb-8 space-y-6">
-              <h3 className="font-serif text-xl text-foreground">
-                Thông tin khách
-              </h3>
-              <div className="rounded-[1.1rem] bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
-                <div className="space-y-4">
-                  <ConfirmationRow label="Họ tên" value={guestDraft.fullName} />
-                  <ConfirmationRow
-                    label="Số điện thoại"
-                    value={guestDraft.phone}
-                  />
-                  <ConfirmationRow
-                    label="Loại móng"
-                    value={guestDraft.nailType}
-                  />
-                  <ConfirmationRow
-                    label="Kiểu sơn"
-                    value={guestDraft.polishStyle}
-                  />
-                  <ConfirmationRow
-                    label="Hiệu ứng"
-                    value={guestDraft.effect}
-                  />
-                  <ConfirmationRow
-                    label="Ghi chú"
-                    value={guestDraft.note || "Không có ghi chú thêm"}
-                  />
-                </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {["Chuyển khoản", "Thẻ nội địa", "Thanh toán tại salon"].map(
+                  (method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      className="rounded-[1rem] border border-border/70 bg-[#fbf8f6] px-4 py-4 text-left transition hover:border-primary/20 hover:bg-white"
+                    >
+                      <span className="block text-sm font-semibold text-foreground">
+                        {method}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-text-muted">
+                        Tuỳ chọn minh hoạ để demo trạng thái sau xác nhận.
+                      </span>
+                    </button>
+                  ),
+                )}
               </div>
-            </section>
 
-            <section className="mb-12 rounded-[1.1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
-              <h3 className="mb-4 font-serif text-xl text-foreground">
-                Thông tin salon
-              </h3>
-              <div className="space-y-3 text-sm leading-7 text-text-muted">
-                <p>19NAIL.STUDIO sẽ liên hệ lại qua số điện thoại bạn đã cung cấp nếu cần xác nhận thêm chi tiết.</p>
-                <p>Khung giờ hiển thị là lịch hẹn dự kiến cho bản MVP customer-side, chưa kết nối backend thời gian thực.</p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  className="flex-1 rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_32px_rgba(127,82,83,0.12)] transition-transform active:scale-[0.99]"
+                >
+                  Tiến hành thanh toán
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-primary/15 px-6 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition hover:bg-[#f7f3f0]"
+                >
+                  Thanh toán sau
+                </button>
               </div>
+
+              <p className="mt-4 text-xs leading-6 text-text-muted">
+                Vui lòng đến sớm 5 phút để salon sắp xếp chỗ ngồi. Khối thanh toán
+                này hiện là mock frontend-only cho mục đích demo.
+              </p>
             </section>
 
             <footer className="flex flex-col gap-4">

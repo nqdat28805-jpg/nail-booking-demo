@@ -424,6 +424,15 @@ export function getDurationMinutes(
 }
 
 export function buildServiceSummaryLabel(selections: ServiceSelections) {
+  const { guestLabel, setLabel, nailLabel, polishLabel, effectLabels } =
+    getServiceSelectionPresentation(selections);
+
+  return [guestLabel, setLabel, nailLabel, polishLabel, effectLabels.join(", ")]
+    .filter((value) => value && value !== "Không có")
+    .join(" · ");
+}
+
+export function getServiceSelectionPresentation(selections: ServiceSelections) {
   const normalizedSelections = normalizeServiceSelections(selections);
   const guestLabel = `${normalizedSelections.guestCount} người`;
   const setLabel = SET_COUNT_OPTIONS.find(
@@ -442,9 +451,13 @@ export function buildServiceSummaryLabel(selections: ServiceSelections) {
         EFFECT_OPTIONS.find((option) => option.value === effect)?.label ?? effect,
     );
 
-  return [guestLabel, setLabel, nailLabel, polishLabel, effectLabels.join(", ")]
-    .filter((value) => value && value !== "Không có")
-    .join(" · ");
+  return {
+    guestLabel,
+    setLabel: setLabel ?? "Tay",
+    nailLabel: nailLabel ?? "Móng thật",
+    polishLabel: polishLabel ?? "Sơn trơn gel",
+    effectLabels,
+  };
 }
 
 export function normalizeServiceSelections(

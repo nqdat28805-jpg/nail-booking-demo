@@ -6,10 +6,14 @@ import { useEffect, useState } from "react";
 import {
   BOOKING_STORAGE_KEY,
   BOOKING_STORAGE_UPDATED_EVENT,
+  buildServiceSummaryLabel,
+  DEFAULT_SERVICE_SELECTIONS,
   formatVietnamesePhone,
   formatHoldCountdown,
   GUEST_DETAILS_STORAGE_KEY,
   getHoldRemainingMs,
+  getServiceSelectionPresentation,
+  normalizeServiceSelections,
   notifyBookingStorageUpdated,
   notifyGuestStorageUpdated,
   normalizeVietnamesePhone,
@@ -25,11 +29,6 @@ import { GuestSummaryCard } from "./guest-summary-card";
 type GuestFormValues = {
   fullName: string;
   phone: string;
-  guestCount: string;
-  setCount: string;
-  nailType: string;
-  polishStyle: string;
-  effect: string;
   note: string;
 };
 
@@ -38,24 +37,8 @@ type GuestFormErrors = Partial<Record<keyof GuestFormValues, string>>;
 const defaultFormValues: GuestFormValues = {
   fullName: "",
   phone: "",
-  guestCount: "1 khách",
-  setCount: "1 bộ",
-  nailType: "Móng tự nhiên",
-  polishStyle: "Sơn gel",
-  effect: "Không chọn",
   note: "",
 };
-
-const guestCountOptions = ["1 khách", "2 khách", "3 khách"];
-const setCountOptions = ["1 bộ", "2 bộ", "3 bộ"];
-const nailTypeOptions = ["Móng tự nhiên", "Nail tip / nối móng"];
-const polishStyleOptions = ["Sơn gel", "Sơn thường", "Cat eye"];
-const effectOptions = [
-  "Không chọn",
-  "Đính đá nhẹ",
-  "Tráng gương",
-  "Vẽ đơn giản",
-];
 
 function getInitialGuestFormValues() {
   const storedGuestDraft =
@@ -68,11 +51,6 @@ function getInitialGuestFormValues() {
   return {
     fullName: storedGuestDraft.fullName,
     phone: storedGuestDraft.phone,
-    guestCount: storedGuestDraft.guestCount,
-    setCount: storedGuestDraft.setCount,
-    nailType: storedGuestDraft.nailType,
-    polishStyle: storedGuestDraft.polishStyle,
-    effect: storedGuestDraft.effect,
     note: storedGuestDraft.note,
   };
 }
@@ -94,16 +72,6 @@ function validate(values: GuestFormValues) {
   return errors;
 }
 
-function buildServiceLabel(values: GuestFormValues) {
-  const details = [values.nailType, values.polishStyle];
-
-  if (values.effect !== "Không chọn") {
-    details.push(values.effect);
-  }
-
-  return details.join(" · ");
-}
-
 export function GuestDetailsExperience() {
   const router = useRouter();
   const [bookingDraft, setBookingDraft] = useState<PersistedBookingDraft | null>(
@@ -121,7 +89,12 @@ export function GuestDetailsExperience() {
 
   const errors = validate(formValues);
   const canSubmit = Object.keys(errors).length === 0;
-  const serviceLabel = buildServiceLabel(formValues);
+  const normalizedSelections = normalizeServiceSelections(
+    bookingDraft?.serviceSelections ?? DEFAULT_SERVICE_SELECTIONS,
+  );
+  const servicePresentation = getServiceSelectionPresentation(normalizedSelections);
+  const serviceLabel =
+    bookingDraft?.serviceLabel ?? buildServiceSummaryLabel(normalizedSelections);
   const holdRemainingMs = bookingDraft
     ? getHoldRemainingMs(bookingDraft, nowTs)
     : 0;
@@ -228,6 +201,14 @@ export function GuestDetailsExperience() {
       ...formValues,
       phone: formatVietnamesePhone(formValues.phone),
       normalizedPhone: normalizeVietnamesePhone(formValues.phone),
+      guestCount: servicePresentation.guestLabel,
+      setCount: servicePresentation.setLabel,
+      nailType: servicePresentation.nailLabel,
+      polishStyle: servicePresentation.polishLabel,
+      effect:
+        servicePresentation.effectLabels.length > 0
+          ? servicePresentation.effectLabels.join(", ")
+          : "Không có",
       serviceLabel,
     };
 
@@ -286,8 +267,8 @@ export function GuestDetailsExperience() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary/15 bg-[#f9f5f2]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-5 sm:px-6">
+      <header className="fixed inset-x-0 top-0 z-50 bg-[#fdf9f6]/80 px-6 py-4 shadow-sm backdrop-blur-xl">
+        <div className="mx-auto flex max-w-lg items-center justify-between">
           <Link
             href="/dat-lich"
             className="text-xl leading-none text-primary transition hover:opacity-70"
@@ -433,18 +414,16 @@ export function GuestDetailsExperience() {
               durationMinutes={bookingDraft.durationMinutes}
               staffName={bookingDraft.staffName}
               serviceLabel={serviceLabel}
-              guestCount={formValues.guestCount}
-              setCount={formValues.setCount}
             />
 
-            <section className="space-y-8">
+            <section className="space-y-6">
               <div className="mb-4">
                 <h2 className="font-serif text-xl text-foreground">
-                  Thông tin cá nhân
+                  Thông tin liên hệ
                 </h2>
                 <p className="mt-1 text-sm leading-relaxed text-[#8e807c]">
-                  Vui lòng để lại thông tin để salon giữ chỗ và chuẩn bị đúng
-                  dịch vụ bạn mong muốn.
+                  Dịch vụ, ngày giờ và thợ đã được đồng bộ từ bước trước. Bạn chỉ
+                  cần hoàn thiện thông tin liên hệ và ghi chú cho salon.
                 </p>
               </div>
 
@@ -500,47 +479,6 @@ export function GuestDetailsExperience() {
                   </div>
                 </FieldShell>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <SelectField
-                    id="guestCount"
-                    label="Số người"
-                    value={formValues.guestCount}
-                    options={guestCountOptions}
-                    onChange={(value) => updateField("guestCount", value)}
-                  />
-                  <SelectField
-                    id="setCount"
-                    label="Số bộ"
-                    value={formValues.setCount}
-                    options={setCountOptions}
-                    onChange={(value) => updateField("setCount", value)}
-                  />
-                </div>
-
-                <SelectField
-                  id="nailType"
-                  label="Loại móng"
-                  value={formValues.nailType}
-                  options={nailTypeOptions}
-                  onChange={(value) => updateField("nailType", value)}
-                />
-
-                <SelectField
-                  id="polishStyle"
-                  label="Kiểu sơn"
-                  value={formValues.polishStyle}
-                  options={polishStyleOptions}
-                  onChange={(value) => updateField("polishStyle", value)}
-                />
-
-                <SelectField
-                  id="effect"
-                  label="Hiệu ứng"
-                  value={formValues.effect}
-                  options={effectOptions}
-                  onChange={(value) => updateField("effect", value)}
-                />
-
                 <FieldShell label="Ghi chú" htmlFor="note">
                   <textarea
                     id="note"
@@ -595,38 +533,5 @@ export function GuestDetailsExperience() {
         )}
       </main>
     </div>
-  );
-}
-
-type SelectFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-};
-
-function SelectField({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-}: SelectFieldProps) {
-  return (
-    <FieldShell label={label} htmlFor={id}>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </FieldShell>
   );
 }
