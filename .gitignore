@@ -32,9 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env
+.env.local
 
 # vercel
 .vercel
+
+# local reference assets
+.codex-temp
+stitch_guest_information.zip
 
 # typescript
 *.tsbuildinfo
