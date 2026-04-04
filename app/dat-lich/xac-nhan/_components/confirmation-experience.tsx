@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import {
   BOOKING_STORAGE_KEY,
   BOOKING_STORAGE_UPDATED_EVENT,
+  DEFAULT_PAYMENT_METHOD,
   GUEST_DETAILS_STORAGE_KEY,
   GUEST_STORAGE_UPDATED_EVENT,
   readStoredJson,
+  type PaymentMethod,
   type PersistedBookingDraft,
   type PersistedGuestDetailsDraft,
 } from "../../booking-mock";
@@ -22,12 +24,6 @@ function createBookingReference(
   return `NL-${datePart}-${phonePart}`;
 }
 
-const paymentMethods = [
-  "Chuyển khoản",
-  "Thẻ nội địa",
-  "Thanh toán tại salon",
-] as const;
-
 export function ConfirmationExperience() {
   const [bookingDraft, setBookingDraft] = useState<PersistedBookingDraft | null>(
     () => readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY),
@@ -36,10 +32,6 @@ export function ConfirmationExperience() {
     () => readStoredJson<PersistedGuestDetailsDraft>(GUEST_DETAILS_STORAGE_KEY),
   );
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    (typeof paymentMethods)[number]
-  >("Thanh toán tại salon");
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   useEffect(() => {
     const syncDrafts = () => {
@@ -92,6 +84,9 @@ export function ConfirmationExperience() {
     bookingDraft && guestDraft
       ? createBookingReference(bookingDraft, guestDraft)
       : null;
+  const selectedPaymentMethod = guestDraft?.paymentMethod ?? DEFAULT_PAYMENT_METHOD;
+  const paymentDetail =
+    guestDraft ? getPaymentDetail(selectedPaymentMethod, guestDraft) : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -153,7 +148,7 @@ export function ConfirmationExperience() {
                 <span className="text-4xl text-primary">✓</span>
               </div>
               <h1 className="mb-2 font-serif text-3xl leading-tight tracking-tight text-foreground">
-                Lịch hẹn đã được ghi nhận
+                Đặt lịch thành công
               </h1>
               <p className="text-[10px] uppercase tracking-[0.2em] text-[#8e807c]">
                 Mã lịch hẹn: #{bookingReference}
@@ -166,7 +161,6 @@ export function ConfirmationExperience() {
                 Thông tin đặt lịch
               </h2>
               <div className="space-y-5">
-                <ConfirmationRow label="Trạng thái" value="pending" accent />
                 <ConfirmationRow
                   label="Khách hàng"
                   value={guestDraft.fullName}
@@ -178,7 +172,7 @@ export function ConfirmationExperience() {
                 <ConfirmationRow
                   label="Dịch vụ"
                   value={guestDraft.serviceLabel || "Dịch vụ móng theo yêu cầu"}
-                  detail={`${guestDraft.guestCount} • ${guestDraft.setCount}`}
+                  detail={`${guestDraft.guestCount} • ${guestDraft.setType}`}
                 />
                 <ConfirmationRow label="Ngày" value={bookingDraft.dateLabel!} />
                 <ConfirmationRow
@@ -194,101 +188,21 @@ export function ConfirmationExperience() {
                   value={`${bookingDraft.durationMinutes} phút`}
                 />
                 <ConfirmationRow label="Thợ" value={bookingDraft.staffName} />
+                <ConfirmationRow
+                  label="Phương thức thanh toán"
+                  value={getPaymentMethodLabel(selectedPaymentMethod)}
+                />
+                <ConfirmationRow
+                  label="Trạng thái thanh toán"
+                  value={getPaymentStatusLabel(selectedPaymentMethod)}
+                />
+                {paymentDetail ? (
+                  <ConfirmationRow
+                    label={paymentDetail.label}
+                    value={paymentDetail.value}
+                  />
+                ) : null}
               </div>
-            </section>
-
-            <section className="mb-12 rounded-[1.1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-serif text-xl text-foreground">
-                    Thanh toán
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-text-muted">
-                    Mô phỏng bước thanh toán cho bản demo public flow.
-                  </p>
-                </div>
-                <span
-                  className={[
-                    "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
-                    paymentCompleted
-                      ? "bg-[#edf4ec] text-[#56724d]"
-                      : "bg-[#f7efe7] text-[#9a6a20]",
-                  ].join(" ")}
-                >
-                  {paymentCompleted ? "Đã thanh toán" : "Chưa thanh toán"}
-                </span>
-              </div>
-
-              {paymentCompleted ? (
-                <div className="rounded-[1rem] border border-[#dbe8d7] bg-[linear-gradient(135deg,rgba(237,244,236,0.95)_0%,rgba(255,255,255,1)_100%)] p-5 shadow-[0_10px_30px_rgba(86,114,77,0.08)]">
-                  <div className="flex items-start gap-4">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#edf4ec] text-[#56724d]">
-                      ✓
-                    </span>
-                    <div className="min-w-0">
-                      <h4 className="font-serif text-xl text-foreground">
-                        Hoàn tất thanh toán
-                      </h4>
-                      <p className="mt-1 text-sm leading-6 text-text-muted">
-                        Trạng thái thanh toán đã được cập nhật thành công cho bản demo.
-                      </p>
-                      <div className="mt-4 space-y-2">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#56724d]">
-                          Trạng thái thanh toán: Đã thanh toán
-                        </p>
-                        <p className="text-sm text-foreground">
-                          Phương thức: {selectedPaymentMethod}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {paymentMethods.map((method) => {
-                      const isSelected = method === selectedPaymentMethod;
-
-                      return (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => setSelectedPaymentMethod(method)}
-                          aria-pressed={isSelected}
-                          className={[
-                            "rounded-[1rem] border px-4 py-4 text-left transition",
-                            isSelected
-                              ? "border-primary/25 bg-[linear-gradient(135deg,rgba(217,162,162,0.16)_0%,rgba(255,255,255,0.98)_100%)] shadow-[0_10px_24px_rgba(127,82,83,0.08)]"
-                              : "border-border/70 bg-[#fbf8f6] hover:border-primary/20 hover:bg-white",
-                          ].join(" ")}
-                        >
-                          <span className="block text-sm font-semibold text-foreground">
-                            {method}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-text-muted">
-                            {method === "Thanh toán tại salon"
-                              ? "Thanh toán trực tiếp tại quầy khi đến lịch hẹn."
-                              : "Tuỳ chọn minh hoạ để demo trạng thái thanh toán."}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentCompleted(true)}
-                    className="mt-6 w-full rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-6 py-4 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_32px_rgba(127,82,83,0.12)] transition-transform active:scale-[0.99]"
-                  >
-                    Tiến hành thanh toán
-                  </button>
-
-                  <p className="mt-4 text-xs leading-6 text-text-muted">
-                    Vui lòng đến sớm 5 phút để salon sắp xếp chỗ ngồi. Khối thanh
-                    toán này hiện là mock frontend-only cho mục đích demo.
-                  </p>
-                </>
-              )}
             </section>
 
             <footer className="flex flex-col gap-4">
@@ -342,4 +256,57 @@ function ConfirmationRow({
       </span>
     </div>
   );
+}
+
+function getPaymentMethodLabel(method: PaymentMethod) {
+  switch (method) {
+    case "bank_transfer":
+      return "Chuyển khoản";
+    case "local_card":
+      return "Thẻ nội địa";
+    default:
+      return "Thanh toán tại salon";
+  }
+}
+
+function getPaymentStatusLabel(method: PaymentMethod) {
+  switch (method) {
+    case "bank_transfer":
+      return "Chờ thanh toán chuyển khoản";
+    case "local_card":
+      return "Đã nhập thông tin thẻ";
+    default:
+      return "Thanh toán khi đến lịch";
+  }
+}
+
+function getPaymentDetail(
+  method: PaymentMethod,
+  guestDraft: PersistedGuestDetailsDraft,
+): { label: string; value: string } | null {
+  if (method === "bank_transfer") {
+    return {
+      label: "Chi tiết thanh toán",
+      value: guestDraft.paymentDetails?.transferReference ?? "19NAIL-0000",
+    };
+  }
+
+  if (method === "local_card") {
+    return {
+      label: "Chi tiết thanh toán",
+      value: maskCardNumber(guestDraft.paymentDetails?.cardNumber),
+    };
+  }
+
+  return null;
+}
+
+function maskCardNumber(value?: string) {
+  if (!value) {
+    return "•••• •••• •••• ••••";
+  }
+
+  const digits = value.replace(/\D/g, "");
+  const visible = digits.slice(-4).padStart(digits.length, "•");
+  return visible.replace(/(.{4})/g, "$1 ").trim();
 }

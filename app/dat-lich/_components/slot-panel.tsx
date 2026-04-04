@@ -1,8 +1,9 @@
-import type { BookingFlowNotice, SlotOption } from "../booking-mock";
+import type { AvailabilitySlot } from "@/src/domain/availability/types";
+import type { BookingFlowNotice } from "../booking-mock";
 
 type SlotPanelProps = {
   selectedDateLabel: string;
-  slots: SlotOption[];
+  slots: AvailabilitySlot[];
   selectedSlot: string | null;
   heldSlot: string | null;
   blockedDurationMinutes: number;
@@ -37,7 +38,7 @@ export function SlotPanel({
   return (
     <section className="space-y-4 pb-28 sm:pb-32">
       <div className="space-y-1 px-2">
-        <h2 className="font-serif text-lg text-primary">Khung giờ khả dụng</h2>
+        <h2 className="font-serif text-lg text-primary">Chọn khung giờ</h2>
         <p className="text-xs uppercase tracking-[0.16em] text-text-muted">
           {selectedDateLabel}
         </p>
@@ -132,18 +133,18 @@ export function SlotPanel({
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
         {slots.map((slot) => {
-          const isHeldStart = heldSlot === slot.time;
-          const isSelectedStart = selectedSlot === slot.time && !heldSlot;
+          const isHeldStart = heldSlot === slot.startTime;
+          const isSelectedStart = selectedSlot === slot.startTime && !heldSlot;
           const isOccupiedContinuation =
-            occupiedSlotTimes.includes(slot.time) && anchorSlot !== slot.time;
+            occupiedSlotTimes.includes(slot.startTime) && anchorSlot !== slot.startTime;
           const isDisabled = slot.state !== "available" || isOccupiedContinuation;
 
           return (
             <button
-              key={slot.time}
+              key={slot.startTime}
               type="button"
               disabled={isDisabled}
-              onClick={() => onSelectSlot(slot.time)}
+              onClick={() => onSelectSlot(slot.startTime)}
               aria-pressed={isHeldStart || isSelectedStart}
               title={slot.reason ?? undefined}
               className={[
@@ -173,7 +174,7 @@ export function SlotPanel({
                 </span>
               ) : null}
               <span className="flex h-full flex-col items-center justify-center gap-1">
-                <span>{slot.time}</span>
+                <span>{slot.startTime}</span>
                 {isOccupiedContinuation ? (
                   <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">
                     Tiếp nối

@@ -9,14 +9,15 @@ import { ServiceConfigurator } from "./service-configurator";
 import { SlotPanel } from "./slot-panel";
 import { StaffPicker } from "./staff-picker";
 import {
-  addMinutesToTime,
   BOOKING_STORAGE_KEY,
+  buildAvailabilityQuery,
   buildServiceSummaryLabel,
   DEFAULT_SERVICE_SELECTIONS,
   formatDateLabel,
   formatHoldCountdown,
   getCalendarMonth,
   getBlockedDurationMinutes,
+  getDurationEstimate,
   getDurationMinutes,
   getHoldRemainingMs,
   getMonthCursorFromIso,
@@ -24,7 +25,7 @@ import {
   getOccupiedSlotTimes,
   getSlotAvailabilityForDay,
   getStaffById,
-  MOCK_TODAY_ISO,
+  getTodayIso,
   notifyBookingStorageUpdated,
   normalizeServiceSelections,
   readStoredJson,
@@ -36,8 +37,10 @@ import {
 } from "../booking-mock";
 
 function getDefaultBookingState() {
+  const todayIso = getTodayIso();
+
   return {
-    visibleMonth: getMonthCursorFromIso(MOCK_TODAY_ISO),
+    visibleMonth: getMonthCursorFromIso(todayIso),
     selectedStaffId: "any",
     serviceSelections: DEFAULT_SERVICE_SELECTIONS,
     selectedDate: null as string | null,
@@ -77,9 +80,12 @@ export function BookingExperience() {
       : 0;
   const hasActiveHold = Boolean(selectedSlot && holdExpiresAt && holdRemainingMs > 0);
   const effectiveSelectedSlot = hasActiveHold ? selectedSlot : null;
-  const endTime = effectiveSelectedSlot
-    ? addMinutesToTime(effectiveSelectedSlot, durationMinutes)
-    : null;
+  const durationEstimate = getDurationEstimate(
+    selectedStaffId,
+    serviceSelections,
+    effectiveSelectedSlot,
+  );
+  const endTime = durationEstimate.estimatedEndTime ?? null;
   const selectedDateLabel = selectedDate ? formatDateLabel(selectedDate) : null;
   const serviceSummaryLabel = buildServiceSummaryLabel(serviceSelections);
   const occupiedSlotTimes = useMemo(
@@ -121,6 +127,7 @@ export function BookingExperience() {
     const storedDraft = readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY);
     const timeout = window.setTimeout(() => {
       const restoredNowTs = Date.now();
+      const todayIso = getTodayIso();
 
       setNowTs(restoredNowTs);
 
@@ -130,17 +137,19 @@ export function BookingExperience() {
       }
 
       const hasActiveHold = getHoldRemainingMs(storedDraft, restoredNowTs) > 0;
+      const restoredDate =
+        storedDraft.date && storedDraft.date >= todayIso ? storedDraft.date : null;
 
-      setVisibleMonth(getMonthCursorFromIso(storedDraft.date ?? MOCK_TODAY_ISO));
+      setVisibleMonth(getMonthCursorFromIso(restoredDate ?? todayIso));
       setSelectedStaffId(storedDraft.staffId || "any");
       setServiceSelections(
         normalizeServiceSelections(
           storedDraft.serviceSelections ?? DEFAULT_SERVICE_SELECTIONS,
         ),
       );
-      setSelectedDate(storedDraft.date);
-      setSelectedSlot(hasActiveHold ? storedDraft.startTime : null);
-      setHoldExpiresAt(hasActiveHold ? storedDraft.holdExpiresAt : null);
+      setSelectedDate(restoredDate);
+      setSelectedSlot(restoredDate && hasActiveHold ? storedDraft.startTime : null);
+      setHoldExpiresAt(restoredDate && hasActiveHold ? storedDraft.holdExpiresAt : null);
       setNotice(storedDraft.latestNotice);
       setHasHydratedDraft(true);
     }, 0);
@@ -156,8 +165,9 @@ export function BookingExperience() {
       dateLabel: selectedDateLabel,
       startTime: effectiveSelectedSlot,
       staffId: selectedStaff.id,
-      staffName: selectedStaff.name,
+      staffName: selectedStaff.displayName,
       durationMinutes,
+      durationEstimate,
       blockedDurationMinutes,
       endTime,
       slotIntervalMinutes: 30,
@@ -167,13 +177,22 @@ export function BookingExperience() {
       latestNotice: notice,
       serviceSelections,
       serviceLabel: serviceSummaryLabel,
-      availabilityMode: selectedStaffId === "any" ? "pool" : "artist",
+      source: "website",
+      channel: "web_self_booking",
+      branchId: null,
+      availabilityMode: selectedStaffId === "any" ? "pool" : "specific_staff",
+      availabilityQuery: buildAvailabilityQuery(
+        selectedDate ?? getTodayIso(),
+        selectedStaffId,
+        serviceSelections,
+      ),
     };
 
     window.sessionStorage.setItem(BOOKING_STORAGE_KEY, JSON.stringify(draft));
     notifyBookingStorageUpdated();
   }, [
     durationMinutes,
+    durationEstimate,
     blockedDurationMinutes,
     effectiveSelectedSlot,
     endTime,
@@ -183,7 +202,7 @@ export function BookingExperience() {
     selectedDate,
     selectedDateLabel,
     selectedStaff.id,
-    selectedStaff.name,
+    selectedStaff.displayName,
     selectedStaffId,
     serviceSelections,
     serviceSummaryLabel,
@@ -236,7 +255,7 @@ export function BookingExperience() {
     selectedDate,
     selectedDateLabel,
     selectedStaff.id,
-    selectedStaff.name,
+    selectedStaff.displayName,
     persistBookingDraft,
   ]);
 
@@ -245,7 +264,7 @@ export function BookingExperience() {
       return;
     }
 
-    const slotOption = slots.find((slot) => slot.time === selectedSlot);
+    const slotOption = slots.find((slot) => slot.startTime === selectedSlot);
 
     if (!slotOption || slotOption.state === "available") {
       return;
@@ -310,7 +329,7 @@ export function BookingExperience() {
   }
 
   function handleSlotSelect(time: string) {
-    const slotOption = slots.find((slot) => slot.time === time);
+    const slotOption = slots.find((slot) => slot.startTime === time);
     if (!slotOption || slotOption.state !== "available") {
       return;
     }
@@ -347,19 +366,9 @@ export function BookingExperience() {
         </div>
       </header>
 
-      <main className="mx-auto mt-16 max-w-lg space-y-10 px-4 py-8 sm:px-5 sm:py-10">
-        <section className="space-y-4 px-1 sm:px-2">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary"
-          >
-            <span aria-hidden="true">←</span>
-            Về trang chủ
-          </Link>
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
-              Step 02
-            </p>
+      <main className="mx-auto mt-14 max-w-lg space-y-8 px-4 py-5 sm:px-5 sm:py-7">
+        <section className="space-y-2 px-1 sm:px-2">
+          <div className="space-y-2">
             <h1 className="font-serif text-3xl leading-tight text-foreground">
               Chọn lịch hẹn
             </h1>
@@ -418,7 +427,7 @@ export function BookingExperience() {
       <BookingSummaryBar
         selectedDateLabel={selectedDateLabel}
         selectedSlot={effectiveSelectedSlot}
-        staffName={selectedStaff.name}
+        staffName={selectedStaff.displayName}
         serviceSummaryLabel={serviceSummaryLabel}
         durationMinutes={durationMinutes}
         endTime={endTime}

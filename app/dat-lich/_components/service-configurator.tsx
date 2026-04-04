@@ -4,9 +4,11 @@ import {
   NAIL_TYPE_OPTIONS,
   POLISH_STYLE_OPTIONS,
   SET_COUNT_OPTIONS,
-  type EffectOption,
-  type ServiceSelections,
 } from "../booking-mock";
+import type {
+  EffectOption,
+  ServiceSelections,
+} from "@/src/domain/booking/types";
 
 type ServiceConfiguratorProps = {
   selections: ServiceSelections;
@@ -26,23 +28,20 @@ export function ServiceConfigurator({
 }: ServiceConfiguratorProps) {
   function handleEffectToggle(effect: EffectOption) {
     if (effect === "none") {
-      onChange("effect", ["none"]);
+      onChange("effects", ["none"]);
       return;
     }
 
-    const nextEffects = selections.effect.includes(effect)
-      ? selections.effect.filter((currentEffect) => currentEffect !== effect)
-      : [...selections.effect.filter((currentEffect) => currentEffect !== "none"), effect];
+    const nextEffects = selections.effects.includes(effect)
+      ? selections.effects.filter((currentEffect) => currentEffect !== effect)
+      : [...selections.effects.filter((currentEffect) => currentEffect !== "none"), effect];
 
-    onChange("effect", nextEffects.length > 0 ? nextEffects : ["none"]);
+    onChange("effects", nextEffects.length > 0 ? nextEffects : ["none"]);
   }
 
   return (
     <section className="space-y-4">
-      <div className="space-y-2 px-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-          Dịch vụ dự kiến
-        </p>
+      <div className="space-y-1 px-2">
         <h2 className="font-serif text-lg text-primary">Chọn tổ hợp dịch vụ</h2>
         <p className="text-sm leading-6 text-text-muted">
           Thời lượng dự kiến sẽ tự cập nhật để bạn chọn khung giờ phù hợp hơn.
@@ -60,8 +59,8 @@ export function ServiceConfigurator({
           <ChipGroup
             label="Số bộ"
             options={SET_COUNT_OPTIONS}
-            selectedValue={selections.setCount}
-            onChange={(value) => onChange("setCount", value)}
+            selectedValue={selections.setType}
+            onChange={(value) => onChange("setType", value)}
           />
           <SelectGroup
             label="Loại móng"
@@ -77,7 +76,7 @@ export function ServiceConfigurator({
           />
           <div className="sm:col-span-2">
             <EffectGroup
-              selectedValues={selections.effect}
+              selectedValues={selections.effects}
               onToggle={handleEffectToggle}
             />
           </div>

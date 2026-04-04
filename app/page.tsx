@@ -1,42 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
+import { NINETEEN_NAIL_STUDIO_PRICE_CONFIG } from "@/src/config/shops/19nail-studio/price-list";
 
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuD4x-l9eaK_rL0KOpH2Pzz14wxB3ME8dKlOuqNNKLlN-yrnXFJd0h83szIiR5r5e9iuvfG2l0NOwf5kQURDIiB2nTDHJ7Nx-cjH_lTQXfT_iwp1sgduMFvjV9WoYDGX0_6Ovu34ttPtp16MnlPy_9VEvEt2AUmdfJ9KG5nQuGCfMuDjM_OelSbIyQbt373YJVbv_8yu3nz7ehBDaNNyGqMiLtaiN9OazBkZXtnhrIxNb1ZhbUul6nq2U-cbASuf6sAjLs5VQMBkfaC0";
 
-const featuredServices = [
-  {
-    name: "Luxury Manicure",
-    price: "$85+",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD7B1iL_j_vOxU4I9KNUP9VW-cjK7aXA2B9vCyy7ICaGuOVGb4RsdBnt3jDv7A4V7kgtsd6sgs4NWRHfNP9e0bZOziArCTA7jzyCjoum5OkBVhnLoczaYLlVq9DD4RoURAKpvyKhOzvrW2ShPzU5zRwlAuRmYyHodnId-Io9V0gAlHcV7kKdK9Ty759B2caKzRF29Ed8qE5vnKsLfjEc8RrmwoUnYdECrihWqma1IIOME_xZ5WCwvKXH0f-BKj1mOLGBIHap02ORdta",
-  },
-  {
-    name: "Art Extensions",
-    price: "$120+",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCwDHgspeTfOTWdaAIkz6fVlodSmfNjYp-uecY95wqDonJfCRyM2nG8beIdgWYUZjUe4SBQOzlc0mxL5SNfZnDxptQrKioIN07qO6UrCyY5ohTxrm4HcYg1Ru5_zQd2YoDysW8935eCmCdOQU7uYbuTDtJhtuKbFJ3VN1SgOELK3dnmH8_k4tSf_Lp6OdmFdStLCXHn7DFpQ0TaSM1_GAkXkKy8bkWBKB6mDke_dv4mDPuDKQDzEaFj2-edpFaecsnnb0KpI6PfKKoT",
-  },
-];
-
-const footerLinks = ["Services", "Gallery"];
+const footerLinks = ["Dịch vụ", "Bộ sưu tập"];
 
 export default function Home() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fdf9f6] text-[#1c1b1a]">
       <header className="fixed inset-x-0 top-0 z-50 bg-[#fdf9f6]/80 px-6 py-4 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg items-center justify-between">
-          <button
-            type="button"
-            aria-label="Menu"
-            className="flex h-6 w-6 items-center justify-center text-primary transition hover:opacity-70"
-          >
-            <span className="flex flex-col gap-1">
-              <span className="block h-[1.5px] w-3 bg-current" />
-              <span className="block h-[1.5px] w-3 bg-current" />
-              <span className="block h-[1.5px] w-3 bg-current" />
-            </span>
-          </button>
+          <span className="w-4" aria-hidden="true" />
           <span className="font-serif text-xl tracking-[-0.02em] text-primary">
             19NAIL.STUDIO
           </span>
@@ -51,7 +27,7 @@ export default function Home() {
           <div className="absolute inset-0">
             <Image
               src={heroImage}
-              alt="Minimalist nail art aesthetic"
+              alt="Không gian làm móng tối giản và tinh tế"
               fill
               priority
               sizes="100vw"
@@ -62,14 +38,9 @@ export default function Home() {
 
           <div className="relative z-10 mx-auto w-full max-w-5xl">
             <div className="max-w-sm space-y-8 md:max-w-md">
-              <div className="space-y-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7f5253]">
-                  The Ethereal Atelier
-                </p>
-                <h1 className="font-serif text-[3.15rem] italic leading-[1.04] tracking-[-0.04em] text-[#1c1b1a] md:text-[4.8rem]">
+              <div className="space-y-5">
+                <h1 className="font-serif text-[3rem] italic leading-[1.06] tracking-[-0.04em] text-[#1c1b1a] md:text-[4.55rem]">
                   Nét đẹp bắt đầu từ những chi tiết nhỏ
-                  <br />
-                  Xinh từ đầu ngón tay
                 </h1>
                 <p className="max-w-[18rem] text-base font-light leading-7 text-[#514443] md:max-w-[21rem] md:text-lg">
                   Một không gian làm móng tinh tế, nơi từng chi tiết được chăm
@@ -80,9 +51,9 @@ export default function Home() {
               <div className="pt-2">
                 <Link
                   href="/dat-lich"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-10 py-4 text-[11px] font-bold uppercase tracking-[0.28em] text-white shadow-[0_12px_40px_rgba(127,82,83,0.16)] transition-transform active:scale-[0.98] md:w-auto"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-10 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-white shadow-[0_12px_40px_rgba(127,82,83,0.16)] transition-transform active:scale-[0.98] md:w-auto"
                 >
-                  Book Now
+                  Đặt lịch ngay
                 </Link>
               </div>
             </div>
@@ -90,41 +61,68 @@ export default function Home() {
         </section>
 
         <section className="mx-auto max-w-5xl px-5 py-16 md:px-8 md:py-20">
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#837373]">
-              Our Curation
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-3">
+              <h2 className="font-serif text-[2.05rem] tracking-[-0.03em] text-[#1c1b1a] md:text-[2.5rem]">
+                Bảng giá dịch vụ
+              </h2>
+              <p className="max-w-2xl text-sm leading-7 text-[#6e605d] md:text-[15px]">
+                Bảng giá được cấu hình riêng cho 19NAIL.STUDIO, trình bày lại từ
+                menu tham chiếu để giữ giao diện nhất quán với website.
+              </p>
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f7b74]">
+              Áp dụng tại 19NAIL.STUDIO
             </p>
-            <h2 className="font-serif text-[2.05rem] tracking-[-0.03em] text-[#1c1b1a] md:text-[2.5rem]">
-              Signature Services
-            </h2>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-10">
-            {featuredServices.map((service) => (
-              <article key={service.name} className="group space-y-4">
-                <div className="overflow-hidden rounded-xl bg-[#e5e2df] shadow-[0_12px_40px_rgba(127,82,83,0.04)]">
-                  <Image
-                    src={service.image}
-                    alt={service.name}
-                    width={960}
-                    height={540}
-                    sizes="(min-width: 768px) 50vw, 100vw"
-                    className="aspect-video h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                  />
-                </div>
-                <div className="flex items-end justify-between gap-4 px-1">
-                  <h3 className="font-serif text-xl text-[#1c1b1a] md:text-2xl">
-                    {service.name}
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {NINETEEN_NAIL_STUDIO_PRICE_CONFIG.categories.map((category) => (
+              <article
+                key={category.id}
+                className="rounded-[1.35rem] border border-[#eadfda] bg-[linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(249,242,238,0.96)_100%)] p-5 shadow-[0_12px_40px_rgba(127,82,83,0.05)]"
+              >
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <h3 className="font-serif text-[1.45rem] tracking-[-0.03em] text-[#1c1b1a]">
+                    {category.title}
                   </h3>
-                  <span className="shrink-0 text-sm text-[#7f5253]">
-                    {service.price}
-                  </span>
+                  <span className="h-px flex-1 bg-[#e4d6d0]" aria-hidden="true" />
+                </div>
+
+                <div className="space-y-4">
+                  {category.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[1rem] border border-white/70 bg-white/70 px-4 py-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold leading-6 text-[#2c2624]">
+                            {item.name}
+                          </p>
+                          {item.notes ? (
+                            <p className="mt-1 text-xs leading-5 text-[#8a7872]">
+                              {item.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold text-[#7f5253]">
+                          {item.priceLabel}
+                        </span>
+                      </div>
+
+                      {"reviewStatus" in item && item.reviewStatus ? (
+                        <p className="mt-3 inline-flex rounded-full bg-[#f4e7dc] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b5f37]">
+                          {item.reviewStatus === "review" ? "Review" : "OCR uncertain"}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               </article>
             ))}
           </div>
         </section>
-
       </main>
 
       <footer className="mb-16 bg-[#f7f3f0] px-8 py-14 text-center md:py-16">
@@ -151,7 +149,7 @@ export default function Home() {
       <div className="fixed bottom-6 right-6 z-50">
         <Link
           href="/dat-lich"
-          aria-label="Book now"
+          aria-label="Đặt lịch ngay"
           className="flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] text-white shadow-[0_8px_30px_rgba(127,82,83,0.3)] transition-transform active:scale-90"
         >
           <svg

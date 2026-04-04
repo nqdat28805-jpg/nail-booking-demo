@@ -2,26 +2,32 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BOOKING_STORAGE_KEY,
   BOOKING_STORAGE_UPDATED_EVENT,
   buildServiceSummaryLabel,
+  DEFAULT_PAYMENT_METHOD,
   DEFAULT_SERVICE_SELECTIONS,
-  formatVietnamesePhone,
+  DEFAULT_WEB_BOOKING_STATUS,
   formatHoldCountdown,
+  formatVietnamesePhone,
   GUEST_DETAILS_STORAGE_KEY,
   getHoldRemainingMs,
   getServiceSelectionPresentation,
   normalizeServiceSelections,
+  normalizeVietnamesePhone,
   notifyBookingStorageUpdated,
   notifyGuestStorageUpdated,
-  normalizeVietnamesePhone,
+  PAYMENT_METHOD_OPTIONS,
   readStoredJson,
   simulateFinalAvailabilityCheck,
+  toVietnamE164,
   type BookingFlowNotice,
+  type PaymentMethod,
   type PersistedBookingDraft,
   type PersistedGuestDetailsDraft,
+  type PersistedPaymentDetails,
 } from "../../booking-mock";
 import { FieldShell } from "./field-shell";
 import { GuestSummaryCard } from "./guest-summary-card";
@@ -34,10 +40,30 @@ type GuestFormValues = {
 
 type GuestFormErrors = Partial<Record<keyof GuestFormValues, string>>;
 
+type PaymentFormValues = {
+  method: PaymentMethod;
+  cardNumber: string;
+  cardholderName: string;
+  expiry: string;
+  cvv: string;
+};
+
+type PaymentFormErrors = Partial<
+  Record<"cardNumber" | "cardholderName" | "expiry" | "cvv", string>
+>;
+
 const defaultFormValues: GuestFormValues = {
   fullName: "",
   phone: "",
   note: "",
+};
+
+const defaultPaymentValues: PaymentFormValues = {
+  method: DEFAULT_PAYMENT_METHOD,
+  cardNumber: "",
+  cardholderName: "",
+  expiry: "",
+  cvv: "",
 };
 
 function getInitialGuestFormValues() {
@@ -55,7 +81,24 @@ function getInitialGuestFormValues() {
   };
 }
 
-function validate(values: GuestFormValues) {
+function getInitialPaymentValues() {
+  const storedGuestDraft =
+    readStoredJson<PersistedGuestDetailsDraft>(GUEST_DETAILS_STORAGE_KEY);
+
+  if (!storedGuestDraft) {
+    return defaultPaymentValues;
+  }
+
+  return {
+    method: storedGuestDraft.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
+    cardNumber: storedGuestDraft.paymentDetails?.cardNumber ?? "",
+    cardholderName: storedGuestDraft.paymentDetails?.cardholderName ?? "",
+    expiry: storedGuestDraft.paymentDetails?.expiry ?? "",
+    cvv: storedGuestDraft.paymentDetails?.cvv ?? "",
+  };
+}
+
+function validateGuestForm(values: GuestFormValues) {
   const errors: GuestFormErrors = {};
 
   if (!values.fullName.trim()) {
@@ -72,12 +115,83 @@ function validate(values: GuestFormValues) {
   return errors;
 }
 
+function validatePaymentForm(values: PaymentFormValues) {
+  const errors: PaymentFormErrors = {};
+
+  if (values.method !== "local_card") {
+    return errors;
+  }
+
+  const cardDigits = values.cardNumber.replace(/\D/g, "");
+  if (cardDigits.length < 12) {
+    errors.cardNumber = "Vui lòng nhập số thẻ hợp lệ.";
+  }
+
+  if (!values.cardholderName.trim()) {
+    errors.cardholderName = "Vui lòng nhập tên chủ thẻ.";
+  }
+
+  if (!/^\d{2}\/\d{2}$/.test(values.expiry)) {
+    errors.expiry = "Vui lòng nhập hạn thẻ theo dạng MM/YY.";
+  }
+
+  if (!/^\d{3,4}$/.test(values.cvv)) {
+    errors.cvv = "Vui lòng nhập mã bảo mật hợp lệ.";
+  }
+
+  return errors;
+}
+
+function formatCardNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 19);
+  return digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExpiry(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
+function buildTransferReference(phone: string) {
+  const normalizedPhone = normalizeVietnamesePhone(phone);
+  const suffix = normalizedPhone ? normalizedPhone.slice(-4) : "0000";
+  return `19NAIL-${suffix}`;
+}
+
+function buildPersistedPaymentDetails(
+  values: PaymentFormValues,
+  phone: string,
+): PersistedPaymentDetails | null {
+  if (values.method === "pay_at_salon") {
+    return null;
+  }
+
+  if (values.method === "bank_transfer") {
+    return {
+      transferReference: buildTransferReference(phone),
+    };
+  }
+
+  return {
+    cardNumber: formatCardNumber(values.cardNumber),
+    cardholderName: values.cardholderName.trim(),
+    expiry: values.expiry,
+    cvv: values.cvv,
+  };
+}
+
 export function GuestDetailsExperience() {
   const router = useRouter();
   const [bookingDraft, setBookingDraft] = useState<PersistedBookingDraft | null>(
     () => readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY),
   );
   const [formValues, setFormValues] = useState(getInitialGuestFormValues);
+  const [paymentValues, setPaymentValues] = useState(getInitialPaymentValues);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof GuestFormValues, boolean>>
@@ -87,8 +201,11 @@ export function GuestDetailsExperience() {
     useState<BookingFlowNotice | null>(null);
   const [nowTs, setNowTs] = useState(() => Date.now());
 
-  const errors = validate(formValues);
-  const canSubmit = Object.keys(errors).length === 0;
+  const guestErrors = validateGuestForm(formValues);
+  const paymentErrors = validatePaymentForm(paymentValues);
+  const canSubmit =
+    Object.keys(guestErrors).length === 0 &&
+    Object.keys(paymentErrors).length === 0;
   const normalizedSelections = normalizeServiceSelections(
     bookingDraft?.serviceSelections ?? DEFAULT_SERVICE_SELECTIONS,
   );
@@ -113,8 +230,11 @@ export function GuestDetailsExperience() {
     !bookingDraft.startTime ||
     !bookingDraft.endTime ||
     !bookingDraft.staffName;
-  const conflictMessage = activeConflictNotice?.message ?? "";
   const conflictAlternativeSlots = activeConflictNotice?.alternativeSlots ?? [];
+  const transferReference = useMemo(
+    () => buildTransferReference(formValues.phone),
+    [formValues.phone],
+  );
 
   useEffect(() => {
     router.prefetch("/dat-lich/xac-nhan");
@@ -124,6 +244,7 @@ export function GuestDetailsExperience() {
     const syncBookingDraft = () => {
       setBookingDraft(readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY));
       setFormValues(getInitialGuestFormValues());
+      setPaymentValues(getInitialPaymentValues());
       setHasHydrated(true);
     };
 
@@ -177,6 +298,16 @@ export function GuestDetailsExperience() {
     }));
   }
 
+  function updatePaymentField<K extends keyof PaymentFormValues>(
+    field: K,
+    value: PaymentFormValues[K],
+  ) {
+    setPaymentValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
+  }
+
   function handleBlur(field: keyof GuestFormValues) {
     setTouchedFields((current) => ({
       ...current,
@@ -201,8 +332,9 @@ export function GuestDetailsExperience() {
       ...formValues,
       phone: formatVietnamesePhone(formValues.phone),
       normalizedPhone: normalizeVietnamesePhone(formValues.phone),
+      phoneE164: toVietnamE164(formValues.phone),
       guestCount: servicePresentation.guestLabel,
-      setCount: servicePresentation.setLabel,
+      setType: servicePresentation.setLabel,
       nailType: servicePresentation.nailLabel,
       polishStyle: servicePresentation.polishLabel,
       effect:
@@ -210,6 +342,8 @@ export function GuestDetailsExperience() {
           ? servicePresentation.effectLabels.join(", ")
           : "Không có",
       serviceLabel,
+      paymentMethod: paymentValues.method,
+      paymentDetails: buildPersistedPaymentDetails(paymentValues, formValues.phone),
     };
 
     window.sessionStorage.setItem(
@@ -252,12 +386,12 @@ export function GuestDetailsExperience() {
 
     window.sessionStorage.setItem(
       BOOKING_STORAGE_KEY,
-      JSON.stringify({
-        ...bookingDraft,
-        status: "pending",
-        holdSlot: null,
-        holdExpiresAt: null,
-        latestNotice: null,
+        JSON.stringify({
+          ...bookingDraft,
+          status: DEFAULT_WEB_BOOKING_STATUS,
+          holdSlot: null,
+          holdExpiresAt: null,
+          latestNotice: null,
       }),
     );
     notifyBookingStorageUpdated();
@@ -283,10 +417,7 @@ export function GuestDetailsExperience() {
       </header>
 
       <main className="mx-auto max-w-lg px-4 pb-16 pt-24 sm:px-5">
-        <div className="mb-10 text-center">
-          <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-            Step 03
-          </span>
+        <div className="mb-8 text-center">
           <h1 className="font-serif text-3xl tracking-tight text-foreground">
             Thông tin khách
           </h1>
@@ -372,41 +503,6 @@ export function GuestDetailsExperience() {
               </section>
             ) : null}
 
-            {activeConflictNotice ? (
-              <section
-                role="status"
-                aria-live="polite"
-                className="mb-6 rounded-[1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)]"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                  Khung giờ vừa thay đổi
-                </p>
-                <p className="mt-3 text-sm leading-7 text-text-muted">
-                  {conflictMessage}
-                </p>
-                {conflictAlternativeSlots.length > 0 ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {conflictAlternativeSlots.map((slot) => (
-                      <span
-                        key={slot}
-                        className="rounded-full border border-primary/15 bg-[#fffaf7] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
-                      >
-                        {slot}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="mt-6">
-                  <Link
-                    href="/dat-lich"
-                    className="inline-flex rounded-full bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] px-5 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_32px_rgba(127,82,83,0.12)]"
-                  >
-                    Quay lại chọn giờ khác
-                  </Link>
-                </div>
-              </section>
-            ) : null}
-
             <GuestSummaryCard
               dateLabel={bookingDraft.dateLabel!}
               startTime={bookingDraft.startTime!}
@@ -416,25 +512,21 @@ export function GuestDetailsExperience() {
               serviceLabel={serviceLabel}
             />
 
-            <section className="space-y-6">
-              <div className="mb-4">
-                <h2 className="font-serif text-xl text-foreground">
-                  Thông tin liên hệ
-                </h2>
-                <p className="mt-1 text-sm leading-relaxed text-[#8e807c]">
-                  Dịch vụ, ngày giờ và thợ đã được đồng bộ từ bước trước. Bạn chỉ
-                  cần hoàn thiện thông tin liên hệ và ghi chú cho salon.
-                </p>
-              </div>
+            <form className="space-y-8" onSubmit={handleSubmit}>
+              <section className="space-y-5">
+                <div>
+                  <h2 className="font-serif text-xl text-foreground">
+                    Thông tin liên hệ
+                  </h2>
+                </div>
 
-              <form className="space-y-6" onSubmit={handleSubmit}>
                 <FieldShell
                   label="Họ tên"
                   htmlFor="fullName"
                   error={
                     (hasAttemptedSubmit || touchedFields.fullName) &&
-                    errors.fullName
-                      ? errors.fullName
+                    guestErrors.fullName
+                      ? guestErrors.fullName
                       : undefined
                   }
                 >
@@ -456,8 +548,8 @@ export function GuestDetailsExperience() {
                   label="Số điện thoại"
                   htmlFor="phone"
                   error={
-                    (hasAttemptedSubmit || touchedFields.phone) && errors.phone
-                      ? errors.phone
+                    (hasAttemptedSubmit || touchedFields.phone) && guestErrors.phone
+                      ? guestErrors.phone
                       : undefined
                   }
                 >
@@ -489,26 +581,252 @@ export function GuestDetailsExperience() {
                     className="w-full resize-none rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition placeholder:text-[#b9aaa3] focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
                   />
                 </FieldShell>
+              </section>
 
-                <div className="pt-4 text-center">
-                  <button
-                    type="submit"
-                    disabled={!canSubmit || Boolean(activeConflictNotice)}
-                    className={[
-                      "w-full rounded-full py-5 font-bold uppercase tracking-[0.12em] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
-                      canSubmit && !activeConflictNotice
-                        ? "bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] text-white shadow-[0_12px_40px_rgba(127,82,83,0.12)] active:scale-[0.99]"
-                        : "bg-[#eadfdb] text-[#af9a95]",
-                    ].join(" ")}
-                  >
-                    Tiếp tục đến xác nhận
-                  </button>
-                  <p className="mt-6 text-[10px] font-medium uppercase tracking-[0.16em] text-[#9a8983]">
-                    Dữ liệu lưu cục bộ trong trình duyệt để sang bước xác nhận
-                  </p>
+              <section className="space-y-5">
+                <div>
+                  <h2 className="font-serif text-xl text-foreground">
+                    Thanh toán
+                  </h2>
                 </div>
-              </form>
-            </section>
+
+                <div className="grid gap-3">
+                  {PAYMENT_METHOD_OPTIONS.map((option) => {
+                    const isSelected = option.value === paymentValues.method;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updatePaymentField("method", option.value)}
+                        aria-pressed={isSelected}
+                        className={[
+                          "rounded-[1rem] border px-4 py-4 text-left transition",
+                          isSelected
+                            ? "border-primary/25 bg-[linear-gradient(135deg,rgba(217,162,162,0.16)_0%,rgba(255,255,255,0.98)_100%)] shadow-[0_10px_24px_rgba(127,82,83,0.08)]"
+                            : "border-border/70 bg-[#fbf8f6] hover:border-primary/20 hover:bg-white",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <span className="block text-sm font-semibold text-foreground">
+                              {option.label}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-text-muted">
+                              {option.value === "pay_at_salon"
+                                ? "Thanh toán trực tiếp khi đến lịch hẹn."
+                                : option.value === "bank_transfer"
+                                  ? "Hiển thị QR và thông tin tài khoản demo để khách tham khảo."
+                                  : "Nhập thông tin thẻ nội địa demo trước khi xác nhận."}
+                            </span>
+                          </div>
+                          <span
+                            className={[
+                              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                              isSelected
+                                ? "border-primary bg-primary text-white"
+                                : "border-[#d8cbc5] bg-white text-transparent",
+                            ].join(" ")}
+                          >
+                            •
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {paymentValues.method === "bank_transfer" ? (
+                  <section className="rounded-[1.1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
+                    <div className="grid gap-5 sm:grid-cols-[1.05fr_1fr]">
+                      <div className="rounded-[1rem] bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] p-4 text-white">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/80">
+                          QR demo
+                        </p>
+                        <div className="mt-3 rounded-[0.9rem] bg-white p-4 text-center text-primary shadow-[inset_0_0_0_1px_rgba(127,82,83,0.08)]">
+                          <div className="mx-auto grid h-36 w-36 grid-cols-6 gap-1">
+                            {Array.from({ length: 36 }).map((_, index) => (
+                              <span
+                                key={index}
+                                className={
+                                  index % 2 === 0 || index % 5 === 0
+                                    ? "rounded-[2px] bg-primary"
+                                    : "rounded-[2px] bg-[#f2e9e5]"
+                                }
+                              />
+                            ))}
+                          </div>
+                          <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em]">
+                            Quét mã để chuyển khoản demo
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <TransferRow label="Ngân hàng" value="MB Bank" />
+                        <TransferRow label="Số tài khoản" value="1900191900" />
+                        <TransferRow
+                          label="Chủ tài khoản"
+                          value="19NAIL STUDIO DEMO"
+                        />
+                        <TransferRow
+                          label="Nội dung"
+                          value={transferReference}
+                        />
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
+
+                {paymentValues.method === "local_card" ? (
+                  <section className="rounded-[1.1rem] border border-border/40 bg-white p-5 shadow-[0_12px_40px_rgba(127,82,83,0.06)] sm:p-6">
+                    <div className="mb-5 rounded-[1rem] bg-[linear-gradient(135deg,#2f2626_0%,#6c5151_100%)] p-5 text-white shadow-[0_12px_32px_rgba(47,38,38,0.18)]">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">
+                        Thẻ nội địa demo
+                      </p>
+                      <p className="mt-6 text-lg tracking-[0.18em]">
+                        {paymentValues.cardNumber || "•••• •••• •••• ••••"}
+                      </p>
+                      <div className="mt-6 flex items-end justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">
+                            Chủ thẻ
+                          </p>
+                          <p className="mt-1 text-sm">
+                            {paymentValues.cardholderName || "Tên chủ thẻ"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">
+                            Hạn thẻ
+                          </p>
+                          <p className="mt-1 text-sm">
+                            {paymentValues.expiry || "MM/YY"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <FieldShell
+                          label="Số thẻ"
+                          htmlFor="cardNumber"
+                          error={
+                            hasAttemptedSubmit && paymentErrors.cardNumber
+                              ? paymentErrors.cardNumber
+                              : undefined
+                          }
+                        >
+                          <input
+                            id="cardNumber"
+                            type="text"
+                            inputMode="numeric"
+                            value={paymentValues.cardNumber}
+                            onChange={(event) =>
+                              updatePaymentField(
+                                "cardNumber",
+                                formatCardNumber(event.target.value),
+                              )
+                            }
+                            placeholder="9704 0000 0000 0000"
+                            className="w-full rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition placeholder:text-[#b9aaa3] focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
+                          />
+                        </FieldShell>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <FieldShell
+                          label="Tên chủ thẻ"
+                          htmlFor="cardholderName"
+                          error={
+                            hasAttemptedSubmit && paymentErrors.cardholderName
+                              ? paymentErrors.cardholderName
+                              : undefined
+                          }
+                        >
+                          <input
+                            id="cardholderName"
+                            type="text"
+                            value={paymentValues.cardholderName}
+                            onChange={(event) =>
+                              updatePaymentField("cardholderName", event.target.value)
+                            }
+                            placeholder="NGUYEN MINH ANH"
+                            className="w-full rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition placeholder:text-[#b9aaa3] focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
+                          />
+                        </FieldShell>
+                      </div>
+
+                      <FieldShell
+                        label="Ngày hết hạn"
+                        htmlFor="expiry"
+                        error={
+                          hasAttemptedSubmit && paymentErrors.expiry
+                            ? paymentErrors.expiry
+                            : undefined
+                        }
+                      >
+                        <input
+                          id="expiry"
+                          type="text"
+                          inputMode="numeric"
+                          value={paymentValues.expiry}
+                          onChange={(event) =>
+                            updatePaymentField(
+                              "expiry",
+                              formatExpiry(event.target.value),
+                            )
+                          }
+                          placeholder="MM/YY"
+                          className="w-full rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition placeholder:text-[#b9aaa3] focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
+                        />
+                      </FieldShell>
+
+                      <FieldShell
+                        label="CVV"
+                        htmlFor="cvv"
+                        error={
+                          hasAttemptedSubmit && paymentErrors.cvv
+                            ? paymentErrors.cvv
+                            : undefined
+                        }
+                      >
+                        <input
+                          id="cvv"
+                          type="password"
+                          inputMode="numeric"
+                          value={paymentValues.cvv}
+                          onChange={(event) =>
+                            updatePaymentField(
+                              "cvv",
+                              event.target.value.replace(/\D/g, "").slice(0, 4),
+                            )
+                          }
+                          placeholder="123"
+                          className="w-full rounded-xl border border-transparent bg-[#f1edea] px-4 py-4 text-foreground outline-none transition placeholder:text-[#b9aaa3] focus:border-primary/15 focus:bg-white focus:ring-1 focus:ring-primary/30"
+                        />
+                      </FieldShell>
+                    </div>
+                  </section>
+                ) : null}
+              </section>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="submit"
+                  disabled={!canSubmit || Boolean(activeConflictNotice)}
+                  className={[
+                    "w-full rounded-full py-5 font-bold uppercase tracking-[0.12em] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+                    canSubmit && !activeConflictNotice
+                      ? "bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] text-white shadow-[0_12px_40px_rgba(127,82,83,0.12)] active:scale-[0.99]"
+                      : "bg-[#eadfdb] text-[#af9a95]",
+                  ].join(" ")}
+                >
+                  XÁC NHẬN
+                </button>
+              </div>
+            </form>
 
             <footer className="mt-20 bg-[#f7f3f0] px-8 py-16 text-center">
               <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
@@ -532,6 +850,17 @@ export function GuestDetailsExperience() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function TransferRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[0.95rem] bg-[#faf6f3] px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a8983]">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }

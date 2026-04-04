@@ -11,9 +11,9 @@ type CalendarBlockProps = {
 };
 
 const statusDotClasses = {
-  available: "bg-primary",
-  limited: "bg-secondary",
-  closed: "bg-[#9c938f]",
+  available: "bg-[#4d9d6d]",
+  limited: "bg-[#dfb24a]",
+  closed: "bg-[#d05f58]",
   outside: "bg-transparent",
 };
 
@@ -58,9 +58,9 @@ export function CalendarBlock({
 
       <div className="rounded-[1.15rem] border border-border/70 bg-[#f7f3f0] p-4 shadow-[0_8px_24px_rgba(127,82,83,0.05)] sm:p-5">
         <div className="mb-4 flex flex-wrap gap-2">
-          <StatusLegend label="Còn chỗ" className="bg-primary" />
-          <StatusLegend label="Gần hết" className="bg-secondary" />
-          <StatusLegend label="Hết chỗ / đóng" className="bg-[#9c938f]" />
+          <StatusLegend label="Còn chỗ" className="bg-[#4d9d6d]" />
+          <StatusLegend label="Gần hết" className="bg-[#dfb24a]" />
+          <StatusLegend label="Hết chỗ / đóng" className="bg-[#d05f58]" />
         </div>
 
         <div className="grid grid-cols-7 gap-1 text-center">

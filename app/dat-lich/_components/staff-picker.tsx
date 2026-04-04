@@ -15,11 +15,8 @@ const avatarBackgrounds: Record<string, string> = {
 export function StaffPicker({ selectedStaffId, onSelect }: StaffPickerProps) {
   return (
     <section className="space-y-4">
-      <div className="space-y-1 px-2">
+      <div className="px-2">
         <h2 className="font-serif text-lg text-primary">Chọn thợ</h2>
-        <p className="text-sm leading-6 text-text-muted">
-          Vuốt ngang để xem thợ. Mặc định là chế độ pool thợ.
-        </p>
       </div>
       <div className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {STAFF_OPTIONS.map((staff) => {
@@ -58,7 +55,7 @@ export function StaffPicker({ selectedStaffId, onSelect }: StaffPickerProps) {
                     : "font-medium text-text-muted",
                 ].join(" ")}
               >
-                {staff.name}
+                {staff.displayName}
               </span>
               <span
                 className={[

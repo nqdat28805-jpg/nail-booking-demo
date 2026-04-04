@@ -1,31 +1,30 @@
+import type {
+  AvailabilityQuery,
+  AvailabilitySlot,
+  AvailabilitySlotState,
+  DurationEstimate,
+  DurationInput,
+} from "@/src/domain/availability/types";
+import { WEB_DEFAULT_BOOKING_STATUS } from "@/src/domain/booking/lifecycle";
+import type {
+  Booking,
+  BookingChannel,
+  BookingServiceSelections,
+  BookingSource,
+  BookingStatus,
+  EffectOption,
+  NailType,
+  PolishStyle,
+  SetType,
+  StaffAssignmentMode,
+} from "@/src/domain/booking/types";
+import type { ServiceDurationRule } from "@/src/domain/config/types";
+import type { BlockOff, Staff, StaffWorkingSchedule } from "@/src/domain/staff/types";
+
 export type DayStatus = "available" | "limited" | "closed";
-export type SlotState =
-  | "available"
-  | "booked"
-  | "held"
-  | "past"
-  | "closed"
-  | "insufficient_duration";
-
-export type SetArea = "hands" | "feet" | "both";
-export type NailType = "natural" | "tip";
-export type PolishStyle = "gel_solid" | "cat_eye" | "chrome";
-export type EffectOption = "none" | "sticker" | "design";
-
-export type ServiceSelections = {
-  guestCount: number;
-  setCount: SetArea;
-  nailType: NailType;
-  polishStyle: PolishStyle;
-  effect: EffectOption[];
-};
-
-export type StaffOption = {
-  id: string;
-  name: string;
-  initials: string;
-  durationMinutes: number;
-};
+export type SlotState = AvailabilitySlotState;
+export type ServiceSelections = BookingServiceSelections;
+export type StaffOption = Staff;
 
 export type CalendarDay = {
   key: string;
@@ -41,12 +40,7 @@ export type BookingCalendarMonth = {
   days: CalendarDay[];
 };
 
-export type SlotOption = {
-  time: string;
-  state: SlotState;
-  reason: string | null;
-  continuousFreeMinutes: number;
-};
+export type SlotOption = AvailabilitySlot;
 
 export type BookingFlowNotice = {
   type:
@@ -65,37 +59,60 @@ export type PersistedBookingDraft = {
   staffId: string;
   staffName: string;
   durationMinutes: number;
+  durationEstimate: DurationEstimate;
   endTime: string | null;
   slotIntervalMinutes: number;
   holdSlot: string | null;
   holdExpiresAt: number | null;
-  status: "draft" | "pending";
+  status: "draft" | BookingStatus;
   latestNotice: BookingFlowNotice | null;
-  serviceSelections?: ServiceSelections;
-  serviceLabel?: string;
-  blockedDurationMinutes?: number;
-  availabilityMode?: "pool" | "artist";
+  serviceSelections: ServiceSelections;
+  serviceLabel: string;
+  blockedDurationMinutes: number;
+  source: BookingSource;
+  channel: BookingChannel;
+  branchId?: string | null;
+  availabilityMode: StaffAssignmentMode;
+  availabilityQuery: AvailabilityQuery;
 };
 
 export type PersistedGuestDetailsDraft = {
   fullName: string;
   phone: string;
   normalizedPhone: string;
+  phoneE164: string;
   guestCount: string;
-  setCount: string;
+  setType: string;
   nailType: string;
   polishStyle: string;
   effect: string;
   note: string;
   serviceLabel: string;
+  paymentMethod: PaymentMethod;
+  paymentDetails: PersistedPaymentDetails | null;
+};
+
+export type PaymentMethod =
+  | "pay_at_salon"
+  | "bank_transfer"
+  | "local_card";
+
+export type PersistedPaymentDetails = {
+  cardNumber?: string;
+  cardholderName?: string;
+  expiry?: string;
+  cvv?: string;
+  transferReference?: string;
 };
 
 export const BOOKING_STORAGE_KEY = "nail-booking-draft";
 export const GUEST_DETAILS_STORAGE_KEY = "nail-guest-details";
 export const BOOKING_STORAGE_UPDATED_EVENT = "booking-storage-updated";
 export const GUEST_STORAGE_UPDATED_EVENT = "guest-storage-updated";
+export const DEFAULT_WEB_BOOKING_STATUS = WEB_DEFAULT_BOOKING_STATUS;
 export const MOCK_TODAY_ISO = "2026-04-01";
 export const MOCK_CURRENT_TIME = "11:30";
+export const DEFAULT_PAYMENT_METHOD: PaymentMethod = "pay_at_salon";
 export const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 export const TEMP_HOLD_DURATION_MS = 5 * 60 * 1000;
 export const SLOT_INTERVAL_MINUTES = 30;
@@ -106,10 +123,10 @@ export const INSUFFICIENT_DURATION_MESSAGE =
 
 export const DEFAULT_SERVICE_SELECTIONS: ServiceSelections = {
   guestCount: 1,
-  setCount: "hands",
+  setType: "hands",
   nailType: "natural",
   polishStyle: "gel_solid",
-  effect: ["none"],
+  effects: ["none"],
 };
 
 export const GUEST_COUNT_OPTIONS = Array.from({ length: 10 }, (_, index) => ({
@@ -126,10 +143,12 @@ export const SET_COUNT_OPTIONS = [
 export const NAIL_TYPE_OPTIONS = [
   { value: "natural", label: "Móng thật" },
   { value: "tip", label: "Móng úp" },
+  { value: "builder_gel", label: "Đắp Gel" },
 ] as const;
 
 export const POLISH_STYLE_OPTIONS = [
   { value: "gel_solid", label: "Sơn trơn gel" },
+  { value: "glitter", label: "Sơn nhũ" },
   { value: "cat_eye", label: "Mắt mèo" },
   { value: "chrome", label: "Tráng gương" },
 ] as const;
@@ -140,31 +159,17 @@ export const EFFECT_OPTIONS = [
   { value: "design", label: "Vẽ design" },
 ] as const;
 
+export const PAYMENT_METHOD_OPTIONS = [
+  { value: "pay_at_salon", label: "Thanh toán tại salon" },
+  { value: "bank_transfer", label: "Chuyển khoản" },
+  { value: "local_card", label: "Thẻ nội địa" },
+] as const;
+
 export const STAFF_OPTIONS: StaffOption[] = [
-  {
-    id: "any",
-    name: "Bất kỳ thợ nào",
-    initials: "☆",
-    durationMinutes: 0,
-  },
-  {
-    id: "mia",
-    name: "Mia",
-    initials: "MI",
-    durationMinutes: 0,
-  },
-  {
-    id: "bella",
-    name: "Bella",
-    initials: "BE",
-    durationMinutes: 0,
-  },
-  {
-    id: "elena",
-    name: "Elena",
-    initials: "EL",
-    durationMinutes: 0,
-  },
+  createStaff("any", "Bất kỳ thợ nào", "☆"),
+  createStaff("mia", "Thảo", "TH"),
+  createStaff("bella", "Linh", "LI"),
+  createStaff("elena", "Nga", "NG"),
 ];
 
 const BOOKABLE_STAFF_IDS = STAFF_OPTIONS.filter((option) => option.id !== "any").map(
@@ -176,39 +181,94 @@ const EFFECT_EXTRA_MINUTES: Record<Exclude<EffectOption, "none">, number> = {
   design: 30,
 };
 
-const BASE_DURATION_TABLE: Record<
-  NailType,
-  Record<PolishStyle, number>
-> = {
-  natural: {
-    gel_solid: 60,
-    cat_eye: 75,
-    chrome: 75,
-  },
-  tip: {
-    gel_solid: 90,
-    cat_eye: 105,
-    chrome: 105,
-  },
-};
+const MOCK_SERVICE_DURATION_RULES: ServiceDurationRule[] = [
+  createDurationRule("rule-hands-natural-gel", "hands", "natural", "gel_solid", 45),
+  createDurationRule("rule-feet-natural-gel", "feet", "natural", "gel_solid", 45),
+  createDurationRule("rule-both-natural-gel", "both", "natural", "gel_solid", 90),
+  createDurationRule("rule-hands-natural-glitter", "hands", "natural", "glitter", 60),
+  createDurationRule("rule-feet-natural-glitter", "feet", "natural", "glitter", 60),
+  createDurationRule("rule-both-natural-glitter", "both", "natural", "glitter", 120),
+  createDurationRule("rule-hands-tip-gel", "hands", "tip", "gel_solid", 60),
+  createDurationRule("rule-feet-tip-gel", "feet", "tip", "gel_solid", 60),
+  createDurationRule("rule-both-tip-gel", "both", "tip", "gel_solid", 120),
+  createDurationRule("rule-hands-tip-glitter", "hands", "tip", "glitter", 90),
+  createDurationRule("rule-feet-tip-glitter", "feet", "tip", "glitter", 90),
+  createDurationRule("rule-both-tip-glitter", "both", "tip", "glitter", 150),
+  createDurationRule("rule-hands-builder-gel", "hands", "builder_gel", "gel_solid", 90),
+  createDurationRule("rule-feet-builder-gel", "feet", "builder_gel", "gel_solid", 90),
+  createDurationRule("rule-both-builder-gel", "both", "builder_gel", "gel_solid", 150),
+  createDurationRule("rule-hands-builder-glitter", "hands", "builder_gel", "glitter", 120),
+  createDurationRule("rule-feet-builder-glitter", "feet", "builder_gel", "glitter", 120),
+  createDurationRule("rule-both-builder-glitter", "both", "builder_gel", "glitter", 180),
+  createDurationRule("rule-hands-natural-cat", "hands", "natural", "cat_eye", 75),
+  createDurationRule("rule-feet-natural-cat", "feet", "natural", "cat_eye", 75),
+  createDurationRule("rule-both-natural-cat", "both", "natural", "cat_eye", 120),
+  createDurationRule("rule-hands-tip-cat", "hands", "tip", "cat_eye", 105),
+  createDurationRule("rule-feet-tip-cat", "feet", "tip", "cat_eye", 105),
+  createDurationRule("rule-both-tip-cat", "both", "tip", "cat_eye", 150),
+  createDurationRule("rule-hands-builder-cat", "hands", "builder_gel", "cat_eye", 135),
+  createDurationRule("rule-feet-builder-cat", "feet", "builder_gel", "cat_eye", 135),
+  createDurationRule("rule-both-builder-cat", "both", "builder_gel", "cat_eye", 195),
+  createDurationRule("rule-hands-natural-chrome", "hands", "natural", "chrome", 75),
+  createDurationRule("rule-feet-natural-chrome", "feet", "natural", "chrome", 75),
+  createDurationRule("rule-both-natural-chrome", "both", "natural", "chrome", 120),
+  createDurationRule("rule-hands-tip-chrome", "hands", "tip", "chrome", 105),
+  createDurationRule("rule-feet-tip-chrome", "feet", "tip", "chrome", 105),
+  createDurationRule("rule-both-tip-chrome", "both", "tip", "chrome", 150),
+  createDurationRule("rule-hands-builder-chrome", "hands", "builder_gel", "chrome", 135),
+  createDurationRule("rule-feet-builder-chrome", "feet", "builder_gel", "chrome", 135),
+  createDurationRule("rule-both-builder-chrome", "both", "builder_gel", "chrome", 195),
+];
 
-const STAFF_SCHEDULES = {
-  mia: {
-    offWeekdays: [2],
-    startMinutes: 9 * 60,
-    endMinutes: 20 * 60 + 30,
-  },
-  bella: {
-    offWeekdays: [5],
-    startMinutes: 9 * 60 + 30,
-    endMinutes: 20 * 60,
-  },
-  elena: {
-    offWeekdays: [0],
-    startMinutes: 10 * 60,
-    endMinutes: 21 * 60,
-  },
-} as const;
+const STAFF_WORKING_SCHEDULES: StaffWorkingSchedule[] = [
+  createSchedule("schedule-mia-0", "mia", 0, "09:00", "20:30"),
+  createSchedule("schedule-mia-1", "mia", 1, "09:00", "20:30"),
+  createSchedule("schedule-mia-2", "mia", 2, "09:00", "20:30", false),
+  createSchedule("schedule-mia-3", "mia", 3, "09:00", "20:30"),
+  createSchedule("schedule-mia-4", "mia", 4, "09:00", "20:30"),
+  createSchedule("schedule-mia-5", "mia", 5, "09:00", "20:30"),
+  createSchedule("schedule-mia-6", "mia", 6, "09:00", "20:30"),
+  createSchedule("schedule-bella-0", "bella", 0, "09:30", "20:00"),
+  createSchedule("schedule-bella-1", "bella", 1, "09:30", "20:00"),
+  createSchedule("schedule-bella-2", "bella", 2, "09:30", "20:00"),
+  createSchedule("schedule-bella-3", "bella", 3, "09:30", "20:00"),
+  createSchedule("schedule-bella-4", "bella", 4, "09:30", "20:00"),
+  createSchedule("schedule-bella-5", "bella", 5, "09:30", "20:00"),
+  createSchedule("schedule-bella-6", "bella", 6, "09:30", "20:00", false),
+  createSchedule("schedule-elena-0", "elena", 0, "10:00", "21:00"),
+  createSchedule("schedule-elena-1", "elena", 1, "10:00", "21:00", false),
+  createSchedule("schedule-elena-2", "elena", 2, "10:00", "21:00"),
+  createSchedule("schedule-elena-3", "elena", 3, "10:00", "21:00"),
+  createSchedule("schedule-elena-4", "elena", 4, "10:00", "21:00"),
+  createSchedule("schedule-elena-5", "elena", 5, "10:00", "21:00"),
+  createSchedule("schedule-elena-6", "elena", 6, "10:00", "21:00"),
+];
+
+const MOCK_BLOCK_OFFS: BlockOff[] = [
+  createBlockOff(
+    "block-mia-lunch",
+    "staff",
+    "Nghỉ trưa Mia",
+    "2026-04-01T12:30:00+07:00",
+    "2026-04-01T13:00:00+07:00",
+    "mia",
+  ),
+  createBlockOff(
+    "block-bella-training",
+    "staff",
+    "Đào tạo Bella",
+    "2026-04-03T15:00:00+07:00",
+    "2026-04-03T16:00:00+07:00",
+    "bella",
+  ),
+  createBlockOff(
+    "block-branch-cleaning",
+    "branch",
+    "Dọn studio",
+    "2026-04-08T18:30:00+07:00",
+    "2026-04-08T19:00:00+07:00",
+  ),
+];
 
 type MonthCursor = {
   year: number;
@@ -223,6 +283,102 @@ type StaffDailyAvailability = {
 };
 
 const SLOT_TIMES = createSlotTimes();
+
+function createStaff(id: string, displayName: string, initials: string): Staff {
+  return {
+    id,
+    displayName,
+    initials,
+    branchId: null,
+    active: true,
+    role: "staff",
+    createdAt: "2026-03-28T09:00:00+07:00",
+    updatedAt: "2026-03-28T09:00:00+07:00",
+  };
+}
+
+function createDurationRule(
+  id: string,
+  setType: SetType,
+  nailType: NailType,
+  polishStyle: PolishStyle,
+  baseDurationMinutes: number,
+): ServiceDurationRule {
+  return {
+    id,
+    code: id.toUpperCase(),
+    branchId: null,
+    setType,
+    nailType,
+    polishStyle,
+    effectOption: "any",
+    baseDurationMinutes,
+    guestCountStrategy: "sequential",
+    guestCountMultiplier: 1,
+    blockRoundToMinutes: SLOT_INTERVAL_MINUTES,
+    active: true,
+    notes: "Draft rule aligned to the shared booking foundation.",
+    createdAt: "2026-03-28T09:00:00+07:00",
+    updatedAt: "2026-03-28T09:00:00+07:00",
+  };
+}
+
+function createSchedule(
+  id: string,
+  staffId: string,
+  dayOfWeek: StaffWorkingSchedule["dayOfWeek"],
+  startTime: string,
+  endTime: string,
+  isWorkingDay = true,
+): StaffWorkingSchedule {
+  return {
+    id,
+    staffId,
+    branchId: null,
+    dayOfWeek,
+    startTime,
+    endTime,
+    isWorkingDay,
+    timezone: "Asia/Bangkok",
+    effectiveFrom: null,
+    effectiveTo: null,
+    createdAt: "2026-03-28T09:00:00+07:00",
+    updatedAt: "2026-03-28T09:00:00+07:00",
+  };
+}
+
+function createBlockOff(
+  id: string,
+  scope: BlockOff["scope"],
+  title: string,
+  startAt: string,
+  endAt: string,
+  staffId?: string,
+): BlockOff {
+  return {
+    id,
+    branchId: null,
+    staffId: staffId ?? null,
+    scope,
+    title,
+    reason: "Draft block-off for shared availability behavior.",
+    startAt,
+    endAt,
+    active: true,
+    createdAt: "2026-03-28T09:00:00+07:00",
+    updatedAt: "2026-03-28T09:00:00+07:00",
+  };
+}
+
+export function getTodayIso(now = new Date()) {
+  return formatIsoDate(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+export function getCurrentTimeLabel(now = new Date()) {
+  return `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+}
 
 export function getMonthCursorFromIso(iso: string) {
   const [year, month] = iso.split("-").map(Number);
@@ -314,8 +470,8 @@ export function getSlotAvailabilityForDay(
   serviceSelections: ServiceSelections,
   activeHoldSlot: string | null = null,
 ) {
-  const durationMinutes = estimateServiceDuration(serviceSelections);
-  const blockedDurationMinutes = getBlockedDurationMinutes(durationMinutes);
+  const durationInput = buildDurationInput(serviceSelections, staffId);
+  const durationEstimate = estimateDurationDetails(durationInput);
   const targetStaffIds =
     staffId === "any" ? BOOKABLE_STAFF_IDS : [staffId];
 
@@ -327,10 +483,10 @@ export function getSlotAvailabilityForDay(
     getStaffDailyAvailability(targetId, iso, activeHoldSlot),
   );
 
-  return SLOT_TIMES.map((time) => {
+  return SLOT_TIMES.map((startTime) => {
     const perStaff = staffMaps.map((availability) => {
-      const baseState = availability.slotStates[time];
-      const freeMinutes = availability.availableWindowMinutes[time] ?? 0;
+      const baseState = availability.slotStates[startTime];
+      const freeMinutes = availability.availableWindowMinutes[startTime] ?? 0;
 
       if (baseState !== "open") {
         return {
@@ -339,7 +495,7 @@ export function getSlotAvailabilityForDay(
         };
       }
 
-      if (freeMinutes < blockedDurationMinutes) {
+      if (freeMinutes < durationEstimate.blockedDurationMinutes) {
         return {
           state: "insufficient_duration" as const,
           continuousFreeMinutes: freeMinutes,
@@ -355,10 +511,15 @@ export function getSlotAvailabilityForDay(
     const availableCandidate = perStaff.find((candidate) => candidate.state === "available");
     if (availableCandidate) {
       return {
-        time,
+        startTime,
+        endTime: addMinutesToTime(startTime, durationEstimate.blockedDurationMinutes),
         state: "available" as const,
         reason: null,
         continuousFreeMinutes: availableCandidate.continuousFreeMinutes,
+        availableStaffIds: targetStaffIds.filter(
+          (targetId, index) => perStaff[index].state === "available",
+        ),
+        holdExpiresAt: null,
       };
     }
 
@@ -369,13 +530,16 @@ export function getSlotAvailabilityForDay(
     );
 
     return {
-      time,
+      startTime,
+      endTime: addMinutesToTime(startTime, durationEstimate.blockedDurationMinutes),
       state: aggregateState,
       reason:
         aggregateState === "insufficient_duration"
           ? INSUFFICIENT_DURATION_MESSAGE
           : getSlotStateReason(aggregateState),
       continuousFreeMinutes: maxFreeMinutes,
+      availableStaffIds: [],
+      holdExpiresAt: null,
     };
   });
 }
@@ -385,25 +549,7 @@ export function getStaffById(staffId: string): StaffOption {
 }
 
 export function estimateServiceDuration(selections: ServiceSelections) {
-  const normalizedSelections = normalizeServiceSelections(selections);
-  const basePerSet =
-    BASE_DURATION_TABLE[normalizedSelections.nailType][normalizedSelections.polishStyle];
-  const setMultiplier = normalizedSelections.setCount === "both" ? 2 : 1;
-  const effectMinutesPerSet = normalizedSelections.effect.includes("none")
-    ? 0
-    : normalizedSelections.effect.reduce((total, effect) => {
-        if (effect === "none") {
-          return total;
-        }
-
-        return total + EFFECT_EXTRA_MINUTES[effect];
-      }, 0);
-  const estimatedMinutes =
-    normalizedSelections.guestCount *
-    setMultiplier *
-    (basePerSet + effectMinutesPerSet);
-
-  return roundUpToNearest(estimatedMinutes, SLOT_INTERVAL_MINUTES);
+  return estimateDurationDetails(buildDurationInput(selections, "any")).durationMinutes;
 }
 
 export function getBlockedDurationMinutes(durationMinutes: number) {
@@ -414,13 +560,31 @@ export function getDurationMinutes(
   staffId: string,
   selections: ServiceSelections = DEFAULT_SERVICE_SELECTIONS,
 ) {
-  const estimatedDuration = estimateServiceDuration(selections);
+  return estimateDurationDetails(buildDurationInput(selections, staffId)).durationMinutes;
+}
 
-  if (staffId === "any") {
-    return estimatedDuration;
-  }
+export function getDurationEstimate(
+  staffId: string,
+  selections: ServiceSelections = DEFAULT_SERVICE_SELECTIONS,
+  startTime?: string | null,
+) {
+  return estimateDurationDetails(buildDurationInput(selections, staffId), startTime ?? null);
+}
 
-  return estimatedDuration;
+export function buildAvailabilityQuery(
+  date: string,
+  staffId: string,
+  selections: ServiceSelections,
+): AvailabilityQuery {
+  return {
+    date,
+    branchId: null,
+    requestedStaffId: staffId === "any" ? null : staffId,
+    staffAssignmentMode: getStaffAssignmentMode(staffId),
+    durationInput: buildDurationInput(selections, staffId),
+    slotIntervalMinutes: SLOT_INTERVAL_MINUTES,
+    includeAlternativeDates: true,
+  };
 }
 
 export function buildServiceSummaryLabel(selections: ServiceSelections) {
@@ -436,7 +600,7 @@ export function getServiceSelectionPresentation(selections: ServiceSelections) {
   const normalizedSelections = normalizeServiceSelections(selections);
   const guestLabel = `${normalizedSelections.guestCount} người`;
   const setLabel = SET_COUNT_OPTIONS.find(
-    (option) => option.value === normalizedSelections.setCount,
+    (option) => option.value === normalizedSelections.setType,
   )?.label;
   const nailLabel = NAIL_TYPE_OPTIONS.find(
     (option) => option.value === normalizedSelections.nailType,
@@ -444,7 +608,7 @@ export function getServiceSelectionPresentation(selections: ServiceSelections) {
   const polishLabel = POLISH_STYLE_OPTIONS.find(
     (option) => option.value === normalizedSelections.polishStyle,
   )?.label;
-  const effectLabels = normalizedSelections.effect
+  const effectLabels = normalizedSelections.effects
     .filter((effect) => effect !== "none")
     .map(
       (effect) =>
@@ -466,9 +630,11 @@ export function normalizeServiceSelections(
   const rawSelections = selections as
     | {
         guestCount?: unknown;
+        setType?: unknown;
         setCount?: unknown;
         nailType?: unknown;
         polishStyle?: unknown;
+        effects?: unknown;
         effect?: unknown;
       }
     | null
@@ -480,27 +646,34 @@ export function normalizeServiceSelections(
       ? selections.guestCount
       : DEFAULT_SERVICE_SELECTIONS.guestCount;
 
-  const setCount =
-    selections?.setCount === "hands" ||
-    selections?.setCount === "feet" ||
-    selections?.setCount === "both"
-      ? selections.setCount
-      : rawSelections?.setCount === 1
-        ? "hands"
-        : rawSelections?.setCount === 2
-          ? "feet"
-          : rawSelections?.setCount === 3
-            ? "both"
-            : DEFAULT_SERVICE_SELECTIONS.setCount;
+  const setType =
+    selections?.setType === "hands" ||
+    selections?.setType === "feet" ||
+    selections?.setType === "both"
+      ? selections.setType
+      : rawSelections?.setCount === "hands" ||
+          rawSelections?.setCount === "feet" ||
+          rawSelections?.setCount === "both"
+        ? rawSelections.setCount
+        : rawSelections?.setCount === 1
+          ? "hands"
+          : rawSelections?.setCount === 2
+            ? "feet"
+            : rawSelections?.setCount === 3
+              ? "both"
+              : DEFAULT_SERVICE_SELECTIONS.setType;
 
   const nailType =
-    selections?.nailType === "tip" || selections?.nailType === "natural"
+    selections?.nailType === "tip" ||
+    selections?.nailType === "natural" ||
+    selections?.nailType === "builder_gel"
       ? selections.nailType
       : DEFAULT_SERVICE_SELECTIONS.nailType;
 
   let polishStyle: PolishStyle = DEFAULT_SERVICE_SELECTIONS.polishStyle;
   if (
     selections?.polishStyle === "gel_solid" ||
+    selections?.polishStyle === "glitter" ||
     selections?.polishStyle === "cat_eye" ||
     selections?.polishStyle === "chrome"
   ) {
@@ -510,15 +683,19 @@ export function normalizeServiceSelections(
     rawSelections?.polishStyle === "gel"
   ) {
     polishStyle = "gel_solid";
+  } else if (rawSelections?.polishStyle === "glitter") {
+    polishStyle = "glitter";
   } else if (rawSelections?.effect === "chrome") {
     polishStyle = "chrome";
   }
 
-  const rawEffects = Array.isArray(selections?.effect)
-    ? selections.effect
-    : typeof rawSelections?.effect === "string"
-      ? [rawSelections.effect]
-      : DEFAULT_SERVICE_SELECTIONS.effect;
+  const rawEffects = Array.isArray(selections?.effects)
+    ? selections.effects
+    : Array.isArray(rawSelections?.effect)
+      ? rawSelections.effect
+      : typeof rawSelections?.effect === "string"
+        ? [rawSelections.effect]
+        : DEFAULT_SERVICE_SELECTIONS.effects;
 
   const mappedEffects = rawEffects
     .map((effect) => {
@@ -557,10 +734,10 @@ export function normalizeServiceSelections(
 
   return {
     guestCount,
-    setCount,
+    setType,
     nailType,
     polishStyle,
-    effect: normalizedEffects,
+    effects: normalizedEffects,
   };
 }
 
@@ -592,7 +769,7 @@ export function isSlotSelectable(
   activeHoldSlot: string | null = null,
 ) {
   return getSlotAvailabilityForDay(iso, staffId, selections, activeHoldSlot).some(
-    (slot) => slot.time === time && slot.state === "available",
+    (slot) => slot.startTime === time && slot.state === "available",
   );
 }
 
@@ -647,6 +824,16 @@ export function normalizeVietnamesePhone(value: string) {
   }
 
   return normalized.slice(0, 10);
+}
+
+export function toVietnamE164(value: string) {
+  const normalized = normalizeVietnamesePhone(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  return `+84${normalized.slice(1)}`;
 }
 
 export function formatVietnamesePhone(value: string) {
@@ -705,15 +892,15 @@ export function getNearbyAlternativeSlots(
   const selectedMinutes = convertTimeToMinutes(selectedTime);
 
   return getSlotAvailabilityForDay(iso, staffId, serviceSelections)
-    .filter((slot) => slot.state === "available" && slot.time !== selectedTime)
+    .filter((slot) => slot.state === "available" && slot.startTime !== selectedTime)
     .sort((left, right) => {
       return (
-        Math.abs(convertTimeToMinutes(left.time) - selectedMinutes) -
-        Math.abs(convertTimeToMinutes(right.time) - selectedMinutes)
+        Math.abs(convertTimeToMinutes(left.startTime) - selectedMinutes) -
+        Math.abs(convertTimeToMinutes(right.startTime) - selectedMinutes)
       );
     })
     .slice(0, count)
-    .map((slot) => slot.time);
+    .map((slot) => slot.startTime);
 }
 
 export function simulateFinalAvailabilityCheck(
@@ -806,12 +993,21 @@ function getDayAvailabilityStatus(
   selections: ServiceSelections,
   activeHoldSlot: string | null,
 ) {
+  const todayIso = getTodayIso();
+  const isPastDay = iso < todayIso;
+
+  if (isPastDay) {
+    return {
+      status: "closed" as const,
+      disabled: true,
+    };
+  }
+
   const slots = getSlotAvailabilityForDay(iso, staffId, selections, activeHoldSlot);
   const availableCount = slots.filter((slot) => slot.state === "available").length;
   const allClosed = slots.every(
     (slot) => slot.state === "closed" || slot.state === "past",
   );
-  const isPastDay = iso < MOCK_TODAY_ISO;
 
   if (allClosed || availableCount === 0) {
     return {
@@ -831,11 +1027,10 @@ function getStaffDailyAvailability(
   iso: string,
   activeHoldSlot: string | null,
 ) {
-  const schedule = STAFF_SCHEDULES[staffId as keyof typeof STAFF_SCHEDULES];
-  const date = new Date(`${iso}T12:00:00`);
-  const weekday = date.getDay();
-  const isPastDay = iso < MOCK_TODAY_ISO;
-  const currentTimeMinutes = convertTimeToMinutes(MOCK_CURRENT_TIME);
+  const schedule = getScheduleForDate(staffId, iso);
+  const todayIso = getTodayIso();
+  const currentTimeMinutes = convertTimeToMinutes(getCurrentTimeLabel());
+  const isPastDay = iso < todayIso;
   const slotStates: Record<string, BaseSlotState> = {};
   const availableWindowMinutes: Record<string, number> = {};
 
@@ -843,15 +1038,16 @@ function getStaffDailyAvailability(
     const timeMinutes = convertTimeToMinutes(time);
 
     if (
-      schedule.offWeekdays.includes(weekday as never) ||
-      timeMinutes < schedule.startMinutes ||
-      timeMinutes >= schedule.endMinutes
+      !schedule ||
+      !schedule.isWorkingDay ||
+      timeMinutes < convertTimeToMinutes(schedule.startTime) ||
+      timeMinutes >= convertTimeToMinutes(schedule.endTime)
     ) {
       slotStates[time] = "closed";
       continue;
     }
 
-    if (isPastDay || (iso === MOCK_TODAY_ISO && timeMinutes < currentTimeMinutes)) {
+    if (isPastDay || (iso === todayIso && timeMinutes < currentTimeMinutes)) {
       slotStates[time] = "past";
       continue;
     }
@@ -859,9 +1055,14 @@ function getStaffDailyAvailability(
     if (
       activeHoldSlot &&
       time === activeHoldSlot &&
-      iso >= MOCK_TODAY_ISO
+      iso >= todayIso
     ) {
       slotStates[time] = "open";
+      continue;
+    }
+
+    if (isBlockedOff(staffId, iso, time)) {
+      slotStates[time] = "closed";
       continue;
     }
 
@@ -907,6 +1108,36 @@ function getStaffDailyAvailability(
   } satisfies StaffDailyAvailability;
 }
 
+function getScheduleForDate(staffId: string, iso: string) {
+  const weekday = new Date(`${iso}T12:00:00`).getDay() as StaffWorkingSchedule["dayOfWeek"];
+
+  return STAFF_WORKING_SCHEDULES.find(
+    (schedule) => schedule.staffId === staffId && schedule.dayOfWeek === weekday,
+  );
+}
+
+function isBlockedOff(staffId: string, iso: string, time: string) {
+  const slotMinutes = convertTimeToMinutes(time);
+
+  return MOCK_BLOCK_OFFS.some((block) => {
+    const start = new Date(block.startAt);
+    const end = new Date(block.endAt);
+    const blockIso = formatIsoDate(start.getFullYear(), start.getMonth(), start.getDate());
+    const appliesToStaff =
+      block.scope === "branch" ||
+      block.scope === "global" ||
+      block.staffId === staffId;
+
+    return (
+      block.active &&
+      appliesToStaff &&
+      blockIso === iso &&
+      slotMinutes >= start.getHours() * 60 + start.getMinutes() &&
+      slotMinutes < end.getHours() * 60 + end.getMinutes()
+    );
+  });
+}
+
 function isHeldByAnotherClient(staffId: string, iso: string, time: string) {
   const intervals = getHeldIntervals(staffId, iso);
 
@@ -914,15 +1145,18 @@ function isHeldByAnotherClient(staffId: string, iso: string, time: string) {
 }
 
 function isBookedByExistingAppointment(staffId: string, iso: string, time: string) {
-  const intervals = getBookedIntervals(staffId, iso);
-
-  return intervals.some((interval) => isTimeInsideInterval(time, interval));
+  return getMockStoredBookings(staffId, iso).some((booking) =>
+    isTimeInsideInterval(time, {
+      startMinutes: convertTimeToMinutes(booking.startTime),
+      endMinutes: convertTimeToMinutes(booking.estimatedEndTime),
+    }),
+  );
 }
 
 function getHeldIntervals(staffId: string, iso: string) {
   const seed = createSeed(`${iso}-${staffId}-held`);
-  const startIndex = 6 + (seed % 8);
-  const shouldCreateHold = seed % 3 === 0;
+  const startIndex = 5 + (seed % 10);
+  const shouldCreateHold = seed % 8 === 0;
 
   if (!shouldCreateHold) {
     return [];
@@ -937,37 +1171,146 @@ function getHeldIntervals(staffId: string, iso: string) {
   ];
 }
 
-function getBookedIntervals(staffId: string, iso: string) {
+function getMockStoredBookings(staffId: string, iso: string) {
   const seed = createSeed(`${iso}-${staffId}-booked`);
-  const morningStart = 1 + (seed % 5);
-  const middayStart = 8 + (seed % 6);
-  const eveningStart = 14 + (seed % 4);
+  const intervals: { startMinutes: number; durationMinutes: number }[] = [];
 
-  return [
-    {
-      startMinutes: SALON_OPEN_MINUTES + morningStart * SLOT_INTERVAL_MINUTES,
-      endMinutes:
-        SALON_OPEN_MINUTES +
-        (morningStart + 1 + (seed % 2)) * SLOT_INTERVAL_MINUTES,
+  if (seed % 3 === 0) {
+    intervals.push({
+      startMinutes: SALON_OPEN_MINUTES + (2 + (seed % 4)) * SLOT_INTERVAL_MINUTES,
+      durationMinutes: (1 + (seed % 2)) * SLOT_INTERVAL_MINUTES,
+    });
+  }
+
+  if (seed % 5 === 0) {
+    intervals.push({
+      startMinutes: SALON_OPEN_MINUTES + (9 + (seed % 5)) * SLOT_INTERVAL_MINUTES,
+      durationMinutes: (2 + (seed % 2)) * SLOT_INTERVAL_MINUTES,
+    });
+  }
+
+  if (seed % 11 === 0) {
+    intervals.push({
+      startMinutes: SALON_OPEN_MINUTES + (15 + (seed % 3)) * SLOT_INTERVAL_MINUTES,
+      durationMinutes: SLOT_INTERVAL_MINUTES,
+    });
+  }
+
+  return intervals.map((interval, index) =>
+    createMockStoredBooking(staffId, iso, interval.startMinutes, interval.durationMinutes, index),
+  );
+}
+
+function createMockStoredBooking(
+  staffId: string,
+  iso: string,
+  startMinutes: number,
+  durationMinutes: number,
+  index: number,
+): Booking {
+  const startTime = convertMinutesToTime(startMinutes);
+  const estimatedEndTime = convertMinutesToTime(startMinutes + durationMinutes);
+
+  return {
+    id: `mock-booking-${staffId}-${iso}-${index}`,
+    referenceCode: `MOCK-${iso.replaceAll("-", "")}-${index}`,
+    customerId: null,
+    customerSnapshot: {
+      fullName: "Mock Customer",
+      phoneE164: "+84900000000",
     },
-    {
-      startMinutes: SALON_OPEN_MINUTES + middayStart * SLOT_INTERVAL_MINUTES,
-      endMinutes:
-        SALON_OPEN_MINUTES +
-        (middayStart + 2 + (seed % 2)) * SLOT_INTERVAL_MINUTES,
+    anonymousSessionId: null,
+    branchId: null,
+    date: iso,
+    startTime,
+    estimatedEndTime,
+    durationMinutes,
+    guestCount: 1,
+    setType: "hands",
+    nailType: "natural",
+    polishStyle: "gel_solid",
+    effects: ["none"],
+    notes: "Mock stored booking for availability simulation.",
+    source: "website",
+    channel: "web_self_booking",
+    status: index % 2 === 0 ? "confirmed" : "checked_in",
+    assignedStaffMode: "specific_staff",
+    assignedStaffId: staffId,
+    timestamps: {
+      createdAt: `${iso}T08:00:00+07:00`,
+      updatedAt: `${iso}T08:00:00+07:00`,
+      confirmedAt: `${iso}T08:05:00+07:00`,
+      checkedInAt: index % 2 === 0 ? null : `${iso}T${startTime}:00+07:00`,
+      actualCompletedAt: null,
+      cancelledAt: null,
     },
-    ...(seed % 2 === 0
-      ? [
-          {
-            startMinutes:
-              SALON_OPEN_MINUTES + eveningStart * SLOT_INTERVAL_MINUTES,
-            endMinutes:
-              SALON_OPEN_MINUTES +
-              (eveningStart + 1) * SLOT_INTERVAL_MINUTES,
-          },
-        ]
-      : []),
-  ];
+    auditMetadata: {
+      createdByActorType: "system",
+      createdByActorId: "mock-seed",
+      updatedByActorType: "system",
+      updatedByActorId: "mock-seed",
+    },
+  };
+}
+
+function buildDurationInput(
+  selections: ServiceSelections,
+  staffId: string,
+): DurationInput {
+  const normalizedSelections = normalizeServiceSelections(selections);
+
+  return {
+    guestCount: normalizedSelections.guestCount,
+    setType: normalizedSelections.setType,
+    nailType: normalizedSelections.nailType,
+    polishStyle: normalizedSelections.polishStyle,
+    effects: normalizedSelections.effects,
+    branchId: null,
+    requestedStaffId: staffId === "any" ? null : staffId,
+    staffAssignmentMode: getStaffAssignmentMode(staffId),
+    processingStrategy: "sequential",
+  };
+}
+
+function estimateDurationDetails(
+  input: DurationInput,
+  startTime: string | null = null,
+): DurationEstimate {
+  const normalizedEffects = input.effects.includes("none") ? [] : input.effects;
+  const matchedRule = MOCK_SERVICE_DURATION_RULES.find(
+    (rule) =>
+      rule.setType === input.setType &&
+      rule.nailType === input.nailType &&
+      rule.polishStyle === input.polishStyle &&
+      rule.active,
+  );
+
+  const baseDurationMinutes = matchedRule?.baseDurationMinutes ?? 60;
+  const effectMinutes = normalizedEffects.reduce((total, effect) => {
+    return total + (effect === "none" ? 0 : EFFECT_EXTRA_MINUTES[effect] ?? 0);
+  }, 0);
+  const durationMinutes = roundUpToNearest(
+    (baseDurationMinutes + effectMinutes) * input.guestCount,
+    SLOT_INTERVAL_MINUTES,
+  );
+
+  return {
+    durationMinutes,
+    blockedDurationMinutes: durationMinutes,
+    slotIntervalMinutes: SLOT_INTERVAL_MINUTES,
+    estimatedEndTime: startTime ? addMinutesToTime(startTime, durationMinutes) : null,
+    matchedRuleCodes: matchedRule ? [matchedRule.code] : ["draft-fallback-rule"],
+    notes: [
+      "Draft duration estimate from shared service duration rules.",
+      input.processingStrategy === "parallel"
+        ? "Parallel guest processing is TBD and not implemented in the mock yet."
+        : "Guest count currently scales sequentially in the mock.",
+    ],
+  };
+}
+
+function getStaffAssignmentMode(staffId: string): StaffAssignmentMode {
+  return staffId === "any" ? "pool" : "specific_staff";
 }
 
 function isTimeInsideInterval(
