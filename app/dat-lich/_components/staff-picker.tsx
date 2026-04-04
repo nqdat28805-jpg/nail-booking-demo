@@ -57,14 +57,6 @@ export function StaffPicker({ selectedStaffId, onSelect }: StaffPickerProps) {
               >
                 {staff.displayName}
               </span>
-              <span
-                className={[
-                  "text-[10px] uppercase tracking-[0.14em]",
-                  isSelected ? "text-secondary" : "text-[#9a8983]",
-                ].join(" ")}
-              >
-                {staff.id === "any" ? "Pool thợ" : "Lịch riêng"}
-              </span>
             </button>
           );
         })}

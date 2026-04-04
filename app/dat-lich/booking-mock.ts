@@ -167,7 +167,7 @@ export const PAYMENT_METHOD_OPTIONS = [
 
 export const STAFF_OPTIONS: StaffOption[] = [
   createStaff("any", "Bất kỳ thợ nào", "☆"),
-  createStaff("mia", "Thảo", "TH"),
+  createStaff("mia", "Yến", "YÊ"),
   createStaff("bella", "Linh", "LI"),
   createStaff("elena", "Nga", "NG"),
 ];
