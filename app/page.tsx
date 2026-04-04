@@ -66,10 +66,6 @@ export default function Home() {
               <h2 className="font-serif text-[2.05rem] tracking-[-0.03em] text-[#1c1b1a] md:text-[2.5rem]">
                 Bảng giá dịch vụ
               </h2>
-              <p className="max-w-2xl text-sm leading-7 text-[#6e605d] md:text-[15px]">
-                Bảng giá được cấu hình riêng cho 19NAIL.STUDIO, trình bày lại từ
-                menu tham chiếu để giữ giao diện nhất quán với website.
-              </p>
             </div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f7b74]">
               Áp dụng tại 19NAIL.STUDIO
@@ -100,22 +96,11 @@ export default function Home() {
                           <p className="text-sm font-semibold leading-6 text-[#2c2624]">
                             {item.name}
                           </p>
-                          {item.notes ? (
-                            <p className="mt-1 text-xs leading-5 text-[#8a7872]">
-                              {item.notes}
-                            </p>
-                          ) : null}
                         </div>
                         <span className="shrink-0 text-sm font-semibold text-[#7f5253]">
                           {item.priceLabel}
                         </span>
                       </div>
-
-                      {"reviewStatus" in item && item.reviewStatus ? (
-                        <p className="mt-3 inline-flex rounded-full bg-[#f4e7dc] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b5f37]">
-                          {item.reviewStatus === "review" ? "Review" : "OCR uncertain"}
-                        </p>
-                      ) : null}
                     </div>
                   ))}
                 </div>
