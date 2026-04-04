@@ -1,5 +1,65 @@
 # Resume
 
+## Staff Calendar MVP
+- Files changed:
+  - `app/api/internal/bookings/route.ts`
+  - `app/api/internal/bookings/[id]/status/route.ts`
+  - `app/api/internal/staff-schedules/route.ts`
+  - `app/noi-bo/layout.tsx`
+  - `app/noi-bo/page.tsx`
+  - `app/noi-bo/lich/page.tsx`
+  - `app/noi-bo/_components/internal-dashboard-nav.tsx`
+  - `app/noi-bo/_components/staff-calendar-screen.tsx`
+  - `app/noi-bo/_components/schedule-management-screen.tsx`
+  - `docs/staff_calendar_mvp.md`
+  - `docs/resume.md`
+  - `src/domain/availability/engine.ts`
+  - `src/infrastructure/memory/repositories.ts`
+  - `src/server/repositories/postgres.ts`
+  - `src/server/staff-calendar.ts`
+  - `src/server/staff-setup.ts`
+- Internal routes/screens added:
+  - `/noi-bo/lich`
+  - upgraded `/noi-bo`
+  - upgraded `/noi-bo/lich-lam-viec`
+- Calendar capabilities added:
+  - internal day agenda by selected date
+  - group bookings by staff
+  - filter by date, staff, status
+  - booking detail panel
+  - clear empty state
+- Booking actions added:
+  - confirm
+  - check_in
+  - complete
+  - cancel
+  - all actions go through `DefaultBookingService`
+- How future-week setup was implemented:
+  - `staff_working_schedules` now supports two editing scopes on the same table
+  - default schedule rows keep `effectiveFrom/effectiveTo = null`
+  - week override rows store `effectiveFrom = weekStart` and `effectiveTo = weekStart + 6`
+  - availability engine now resolves the most specific matching schedule first, then falls back to default rows
+- Shared data path preserved:
+  - customer Step 2 still calls `POST /api/public-booking/context`
+  - customer Step 3 still creates bookings through `POST /api/public-booking/bookings`
+  - internal calendar now reads bookings through `GET /api/internal/bookings` on the same runtime
+  - internal booking actions mutate the same booking entity/status used by customer and future staff flows
+- Verification completed:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - `/`, `/dat-lich`, `/dat-lich/thong-tin`, `/dat-lich/xac-nhan`, `/noi-bo`, `/noi-bo/lich`, `/noi-bo/nhan-su`, `/noi-bo/lich-lam-viec`, `/noi-bo/block-off`, `/noi-bo/cau-hinh` return `200`
+  - verified customer-created bookings appear in `/api/internal/bookings`
+  - verified `confirm`, `check_in`, `complete`, and `cancel` actions through `/api/internal/bookings/:id/status`
+  - verified future-week override persisted and customer availability changed from available to unavailable for the selected override week
+- What remains mocked or simplified:
+  - local verification still ran on `memory_fallback`
+  - staff calendar is day view only for this MVP
+  - no staff-side create/edit/reschedule booking UI yet
+  - persisted `TEMP_HOLD` still missing
+  - auth and audit log persistence still missing
+- Exact next step if another prompt continues:
+  - add staff-side booking create/edit/reschedule flows, persisted temp holds, and a richer multi-day staff calendar/timeline on top of the same shared runtime
+
 ## Staff Setup MVP
 - Files changed:
   - `app/api/internal/staff/route.ts`

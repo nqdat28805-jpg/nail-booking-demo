@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/noi-bo", label: "Tổng quan" },
-  { href: "/noi-bo/nhan-su", label: "Nhân sự" },
-  { href: "/noi-bo/lich-lam-viec", label: "Lịch làm việc" },
+  { href: "/noi-bo", label: "Tong quan" },
+  { href: "/noi-bo/lich", label: "Lich dat" },
+  { href: "/noi-bo/nhan-su", label: "Nhan su" },
+  { href: "/noi-bo/lich-lam-viec", label: "Lich lam viec" },
   { href: "/noi-bo/block-off", label: "Block-off" },
-  { href: "/noi-bo/cau-hinh", label: "Cấu hình" },
+  { href: "/noi-bo/cau-hinh", label: "Cau hinh" },
 ];
 
 export function InternalDashboardNav() {

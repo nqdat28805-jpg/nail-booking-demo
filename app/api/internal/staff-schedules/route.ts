@@ -4,6 +4,9 @@ import { getInternalStaffSchedules, replaceInternalStaffSchedules } from "@/src/
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const staffId = searchParams.get("staffId");
+  const scope =
+    searchParams.get("scope") === "week_override" ? "week_override" : "default";
+  const weekStart = searchParams.get("weekStart");
 
   if (!staffId) {
     return NextResponse.json(
@@ -12,7 +15,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const payload = await getInternalStaffSchedules(staffId);
+  const payload = await getInternalStaffSchedules({
+    staffId,
+    scope,
+    weekStart,
+  });
   return NextResponse.json(payload);
 }
 
@@ -29,6 +36,8 @@ export async function PUT(request: Request) {
 
     const schedules = await replaceInternalStaffSchedules({
       staffId: body.staffId,
+      scope: body.scope === "week_override" ? "week_override" : "default",
+      weekStart: body.weekStart ?? null,
       schedules: body.schedules.map((schedule: any) => ({
         dayOfWeek: Number(schedule.dayOfWeek),
         startTime: schedule.startTime,

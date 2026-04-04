@@ -4,6 +4,7 @@ import { DEMO_BRANCH_ID } from "@/src/server/demo/demo-seed";
 import { getSharedBookingRuntime } from "@/src/server/runtime/shared-booking-runtime";
 
 export const INTERNAL_SETUP_BRANCH_ID = DEMO_BRANCH_ID;
+export type ScheduleEditorScope = "default" | "week_override";
 
 const LOOKUP_DATE_FROM = "2026-01-01";
 const LOOKUP_DATE_TO = "2027-12-31";
@@ -106,27 +107,49 @@ export async function updateInternalStaff(
   });
 }
 
-export async function getInternalStaffSchedules(staffId: string) {
+export async function getInternalStaffSchedules(input: {
+  staffId: string;
+  scope?: ScheduleEditorScope;
+  weekStart?: string | null;
+}) {
   const runtime = await getSharedBookingRuntime();
+  const scope = input.scope ?? "default";
+  const weekWindow =
+    scope === "week_override" ? resolveWeekWindow(input.weekStart ?? null) : null;
   const [staff, schedules] = await Promise.all([
-    runtime.repositories.staffRepository.findById(staffId),
+    runtime.repositories.staffRepository.findById(input.staffId),
     runtime.repositories.staffScheduleRepository.listByDateRange({
       branchId: INTERNAL_SETUP_BRANCH_ID,
-      staffIds: [staffId],
+      staffIds: [input.staffId],
       dateFrom: LOOKUP_DATE_FROM,
       dateTo: LOOKUP_DATE_TO,
     }),
   ]);
+  const effectiveSchedules = resolveScheduleEditorRows({
+    staffId: input.staffId,
+    schedules,
+    scope,
+    weekWindow,
+  });
 
   return {
     source: runtime.source,
     staff,
-    items: buildWeeklyScheduleMatrix(staffId, schedules),
+    scope,
+    weekStart: weekWindow?.weekStart ?? null,
+    weekEnd: weekWindow?.weekEnd ?? null,
+    resolvedFrom:
+      scope === "week_override" && hasSchedulesForExactWindow(schedules, input.staffId, weekWindow)
+        ? "override"
+        : "default",
+    items: effectiveSchedules,
   };
 }
 
 export async function replaceInternalStaffSchedules(input: {
   staffId: string;
+  scope?: ScheduleEditorScope;
+  weekStart?: string | null;
   schedules: Array<{
     dayOfWeek: StaffWorkingSchedule["dayOfWeek"];
     startTime: string;
@@ -136,6 +159,9 @@ export async function replaceInternalStaffSchedules(input: {
   }>;
 }) {
   const runtime = await getSharedBookingRuntime();
+  const scope = input.scope ?? "default";
+  const weekWindow =
+    scope === "week_override" ? resolveWeekWindow(input.weekStart ?? null) : null;
   const timestamp = new Date().toISOString();
   for (const schedule of input.schedules) {
     if (
@@ -155,8 +181,8 @@ export async function replaceInternalStaffSchedules(input: {
     breakRanges: schedule.breakRanges ?? [],
     isWorkingDay: schedule.isWorkingDay,
     timezone: "Asia/Bangkok",
-    effectiveFrom: null,
-    effectiveTo: null,
+    effectiveFrom: weekWindow?.weekStart ?? null,
+    effectiveTo: weekWindow?.weekEnd ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
   })) satisfies StaffWorkingSchedule[];
@@ -284,6 +310,68 @@ function buildWeeklyScheduleMatrix(
   });
 }
 
+function resolveScheduleEditorRows(input: {
+  staffId: string;
+  schedules: StaffWorkingSchedule[];
+  scope: ScheduleEditorScope;
+  weekWindow: { weekStart: string; weekEnd: string } | null;
+}) {
+  if (input.scope === "week_override" && input.weekWindow) {
+    const overrideRows = input.schedules.filter(
+      (schedule) =>
+        schedule.staffId === input.staffId &&
+        (schedule.effectiveFrom ?? null) === input.weekWindow?.weekStart &&
+        (schedule.effectiveTo ?? null) === input.weekWindow?.weekEnd,
+    );
+
+    if (overrideRows.length > 0) {
+      return buildWeeklyScheduleMatrix(input.staffId, overrideRows);
+    }
+  }
+
+  const defaultRows = input.schedules.filter(
+    (schedule) =>
+      schedule.staffId === input.staffId &&
+      !schedule.effectiveFrom &&
+      !schedule.effectiveTo,
+  );
+
+  if (defaultRows.length > 0) {
+    return buildWeeklyScheduleMatrix(input.staffId, defaultRows).map((row) => ({
+      ...row,
+      effectiveFrom: input.weekWindow?.weekStart ?? row.effectiveFrom ?? null,
+      effectiveTo: input.weekWindow?.weekEnd ?? row.effectiveTo ?? null,
+    }));
+  }
+
+  return buildWeeklyScheduleMatrix(input.staffId, []);
+}
+
+function resolveWeekWindow(weekStart: string | null) {
+  const normalizedWeekStart = getWeekStartIso(weekStart ?? toIsoDate(new Date()));
+  return {
+    weekStart: normalizedWeekStart,
+    weekEnd: addDays(normalizedWeekStart, 6),
+  };
+}
+
+function hasSchedulesForExactWindow(
+  schedules: StaffWorkingSchedule[],
+  staffId: string,
+  weekWindow: { weekStart: string; weekEnd: string } | null,
+) {
+  if (!weekWindow) {
+    return false;
+  }
+
+  return schedules.some(
+    (schedule) =>
+      schedule.staffId === staffId &&
+      (schedule.effectiveFrom ?? null) === weekWindow.weekStart &&
+      (schedule.effectiveTo ?? null) === weekWindow.weekEnd,
+  );
+}
+
 function deriveInitials(displayName: string) {
   return displayName
     .trim()
@@ -303,6 +391,14 @@ function toIsoDate(date: Date) {
 function addDays(isoDate: string, daysToAdd: number) {
   const date = new Date(`${isoDate}T12:00:00`);
   date.setDate(date.getDate() + daysToAdd);
+  return toIsoDate(date);
+}
+
+function getWeekStartIso(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`);
+  const weekday = date.getDay();
+  const distanceToMonday = weekday === 0 ? -6 : 1 - weekday;
+  date.setDate(date.getDate() + distanceToMonday);
   return toIsoDate(date);
 }
 

@@ -18,13 +18,14 @@ export default function InternalDashboardLayout({
                   19NAIL.STUDIO
                 </Link>
                 <span className="rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Nội bộ demo
+                  Noi bo demo
                 </span>
               </div>
               <div className="space-y-1">
-                <p className="font-serif text-2xl text-foreground">Staff Setup MVP</p>
+                <p className="font-serif text-2xl text-foreground">Staff Operations MVP</p>
                 <p className="text-sm leading-6 text-text-muted">
-                  Khu cấu hình vận hành nội bộ. Chưa có auth, dùng cho demo MVP staff setup.
+                  Khu van hanh noi bo cho setup va calendar. Chua co auth, dung cho demo
+                  MVP staff.
                 </p>
               </div>
             </div>

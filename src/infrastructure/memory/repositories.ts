@@ -297,13 +297,31 @@ export class InMemoryStaffScheduleRepository implements StaffScheduleRepository 
   }
 
   async replaceForStaff(staffId: string, schedules: StaffWorkingSchedule[]) {
+    const template = schedules[0] ?? null;
+    const targetEffectiveFrom = template?.effectiveFrom ?? null;
+    const targetEffectiveTo = template?.effectiveTo ?? null;
+
     this.schedules = [
-      ...this.schedules.filter((schedule) => schedule.staffId !== staffId),
+      ...this.schedules.filter((schedule) => {
+        if (schedule.staffId !== staffId) {
+          return true;
+        }
+
+        return !(
+          (schedule.effectiveFrom ?? null) === targetEffectiveFrom &&
+          (schedule.effectiveTo ?? null) === targetEffectiveTo
+        );
+      }),
       ...schedules,
     ];
 
     return this.schedules
-      .filter((schedule) => schedule.staffId === staffId)
+      .filter(
+        (schedule) =>
+          schedule.staffId === staffId &&
+          (schedule.effectiveFrom ?? null) === targetEffectiveFrom &&
+          (schedule.effectiveTo ?? null) === targetEffectiveTo,
+      )
       .sort((left, right) => left.dayOfWeek - right.dayOfWeek);
   }
 }

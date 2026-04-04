@@ -261,7 +261,22 @@ export class PostgresStaffScheduleRepository implements StaffScheduleRepository 
   }
 
   async replaceForStaff(staffId: string, schedules: StaffWorkingSchedule[]) {
-    await this.sql`delete from staff_working_schedules where staff_id = ${staffId}`;
+    const template = schedules[0] ?? null;
+    const targetEffectiveFrom = template?.effectiveFrom ?? null;
+    const targetEffectiveTo = template?.effectiveTo ?? null;
+
+    await this.sql`
+      delete from staff_working_schedules
+      where staff_id = ${staffId}
+        and (
+          (${targetEffectiveFrom}::date is null and effective_from is null)
+          or effective_from = ${targetEffectiveFrom}
+        )
+        and (
+          (${targetEffectiveTo}::date is null and effective_to is null)
+          or effective_to = ${targetEffectiveTo}
+        )
+    `;
 
     for (const schedule of schedules) {
       await this.sql`

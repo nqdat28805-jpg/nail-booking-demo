@@ -208,11 +208,10 @@ function buildStaffSlotMap(input: {
   collapseContinuationStates: boolean;
 }) {
   const slotMap: Record<string, StaffSlotSnapshot> = {};
-  const daySchedule = input.schedules.find(
-    (schedule) =>
-      schedule.staffId === input.staff.id &&
-      schedule.dayOfWeek === getIsoWeekday(input.query.date) &&
-      isScheduleEffectiveOnDate(schedule, input.query.date),
+  const daySchedule = resolveScheduleForDate(
+    input.schedules,
+    input.staff.id,
+    input.query.date,
   );
   const currentIso = toIsoDate(input.now);
   const nowMinutes = input.now.getHours() * 60 + input.now.getMinutes();
@@ -497,6 +496,54 @@ function isScheduleEffectiveOnDate(schedule: StaffWorkingSchedule, date: string)
   }
 
   return true;
+}
+
+function resolveScheduleForDate(
+  schedules: StaffWorkingSchedule[],
+  staffId: string,
+  date: string,
+) {
+  const weekday = getIsoWeekday(date);
+  const candidates = schedules.filter(
+    (schedule) =>
+      schedule.staffId === staffId &&
+      schedule.dayOfWeek === weekday &&
+      isScheduleEffectiveOnDate(schedule, date),
+  );
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates.sort(compareScheduleSpecificity)[0] ?? null;
+}
+
+function compareScheduleSpecificity(
+  left: StaffWorkingSchedule,
+  right: StaffWorkingSchedule,
+) {
+  const leftSpecificity = getScheduleSpecificity(left);
+  const rightSpecificity = getScheduleSpecificity(right);
+
+  if (leftSpecificity !== rightSpecificity) {
+    return rightSpecificity - leftSpecificity;
+  }
+
+  return (right.updatedAt ?? "").localeCompare(left.updatedAt ?? "");
+}
+
+function getScheduleSpecificity(schedule: StaffWorkingSchedule) {
+  let score = 0;
+
+  if (schedule.effectiveFrom) {
+    score += 1;
+  }
+
+  if (schedule.effectiveTo) {
+    score += 1;
+  }
+
+  return score;
 }
 
 function toIsoDate(date: Date) {

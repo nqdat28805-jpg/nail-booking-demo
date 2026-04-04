@@ -15,15 +15,15 @@ export default async function InternalDashboardHomePage() {
               MVP internal setup
             </p>
             <h1 className="font-serif text-3xl text-foreground">
-              Dữ liệu staff setup đang cấp nguồn cho availability chung
+              Staff setup va staff calendar dang dung chung shared runtime
             </h1>
             <p className="max-w-3xl text-sm leading-7 text-text-muted">
-              Customer flow và staff MVP tiếp theo sẽ dùng cùng staff, working schedule,
-              block-off, và duration rule từ shared runtime.
+              Customer flow, setup noi bo, va lich dat staff deu doc cung staff,
+              schedules, block-off, duration rules, va bookings.
             </p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime hiện tại:{" "}
+            Runtime hien tai:{" "}
             <span className="font-semibold text-primary">{snapshot.source}</span>
           </div>
         </div>
@@ -31,9 +31,9 @@ export default async function InternalDashboardHomePage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Nhân sự", value: snapshot.counts.staff },
-          { label: "Nhân sự đang hoạt động", value: snapshot.counts.activeStaff },
-          { label: "Dòng lịch làm việc", value: snapshot.counts.schedules },
+          { label: "Nhan su", value: snapshot.counts.staff },
+          { label: "Nhan su dang hoat dong", value: snapshot.counts.activeStaff },
+          { label: "Dong lich lam viec", value: snapshot.counts.schedules },
           { label: "Duration rules", value: snapshot.counts.rules },
         ].map((item) => (
           <article
@@ -48,28 +48,33 @@ export default async function InternalDashboardHomePage() {
 
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <article className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
-          <h2 className="font-serif text-2xl text-foreground">Các khu cấu hình hiện có</h2>
+          <h2 className="font-serif text-2xl text-foreground">Khu noi bo hien co</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {[
               {
+                href: "/noi-bo/lich",
+                title: "Lich dat",
+                body: "Xem agenda theo ngay, loc booking, mo chi tiet va cap nhat trang thai.",
+              },
+              {
                 href: "/noi-bo/nhan-su",
-                title: "Nhân sự",
-                body: "Thêm, sửa, bật/tắt staff và quản lý thứ tự hiển thị.",
+                title: "Nhan su",
+                body: "Them, sua, bat tat staff va quan ly thu tu hien thi.",
               },
               {
                 href: "/noi-bo/lich-lam-viec",
-                title: "Lịch làm việc",
-                body: "Thiết lập lịch tuần theo staff, ngày nghỉ và khoảng nghỉ.",
+                title: "Lich lam viec",
+                body: "Sua lich mac dinh va override cho tung tuan tuong lai.",
               },
               {
                 href: "/noi-bo/block-off",
                 title: "Block-off",
-                body: "Khóa giờ salon-wide hoặc theo staff để customer availability phản ánh ngay.",
+                body: "Khoa gio salon-wide hoac theo staff de availability phan anh ngay.",
               },
               {
                 href: "/noi-bo/cau-hinh",
                 title: "Duration rules",
-                body: "Xem và chỉnh rule thời lượng cơ bản cho tổ hợp dịch vụ hiện tại.",
+                body: "Xem va chinh rule thoi luong co ban cho to hop dich vu.",
               },
             ].map((item) => (
               <Link
@@ -85,15 +90,16 @@ export default async function InternalDashboardHomePage() {
         </article>
 
         <article className="rounded-[1.8rem] border border-border/80 bg-[#3b2d2f] p-6 text-white shadow-[0_20px_40px_rgba(37,28,28,0.18)]">
-          <h2 className="font-serif text-2xl">Customer availability đang đọc gì</h2>
+          <h2 className="font-serif text-2xl">Customer availability dang doc gi</h2>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-white/80">
-            <li>Staff active/inactive từ shared repository.</li>
-            <li>Working schedule theo weekday và giờ mở/đóng của từng staff.</li>
-            <li>Block-off salon-wide hoặc staff-specific.</li>
-            <li>Duration rules cho estimateDuration và blocked duration.</li>
+            <li>Staff active/inactive tu shared repository.</li>
+            <li>Lich mac dinh va override theo tuan cua tung staff.</li>
+            <li>Block-off salon-wide hoac staff-specific.</li>
+            <li>Duration rules cho estimateDuration va blocked duration.</li>
+            <li>Bookings da tao tu customer flow.</li>
           </ul>
           <p className="mt-4 rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-sm leading-6 text-white/75">
-            Chưa bao gồm staff calendar đầy đủ, persisted temp hold, auth và báo cáo vận hành.
+            Chua bao gom auth, persisted temp hold, reschedule UI day du, hoac bao cao.
           </p>
         </article>
       </div>
