@@ -1,77 +1,119 @@
 # Availability Contracts
 
-## Duration estimation contract
+## Duration estimation
 
-Shared type:
+Shared types:
 - `DurationInput`
 - `DurationEstimate`
 
-Contract:
-- `AvailabilityServiceContract.estimateDuration(input)`
+Shared service:
+- `DefaultDurationService`
+- contract-compatible with `AvailabilityServiceContract.estimateDuration(input)`
 
-Behavior:
-- Accepts service selections plus assignment mode and optional staff/branch context.
-- Returns estimated duration, blocked duration, slot interval, matched rule codes, and draft notes.
-- The current mock runtime already routes duration estimation through explicit `service_duration_rules`-style data.
+Current draft behavior:
+- reads active `service_duration_rules`
+- applies effect modifiers
+- rounds blocked time to slot interval
+- returns matched rule codes plus explicit draft notes
 
-## Availability query contract
+## Availability query
 
-Shared type:
+Shared types:
 - `AvailabilityQuery`
 - `AvailabilitySlot`
 - `AvailabilityResult`
+- `TemporaryHold`
 
-Contract:
-- `AvailabilityServiceContract.queryAvailability(input)`
+Shared service:
+- `DefaultAvailabilityService`
 
-Behavior:
-- Uses one shared query model for customer web and future staff dashboard.
-- Intended inputs include:
-  - date
-  - staff assignment mode
-  - optional requested staff id
-  - branch id if applicable
-  - duration input
-  - slot interval
-- Intended results include:
-  - slot state
-  - start and end time
-  - reason when unavailable
-  - continuous free minutes
-  - optional available staff ids
+Shared engine entrypoint:
+- `runAvailabilityEngine(...)`
 
-## Booking lifecycle-related contracts
+The engine now models:
+- date
+- branch
+- requested staff or pool mode
+- guest count
+- set type
+- nail type
+- polish style
+- effects
+- estimated duration
+- staff working schedules
+- existing bookings
+- block-off periods
+- TEMP_HOLD windows
 
-Shared booking lifecycle actions are defined in `BookingServiceContract`:
+The engine currently returns:
+- valid start slots
+- slot states
+- estimated end time per slot
+- invalidation reason text
+- invalidation reason code
+- optional alternative start slot suggestions
+- per-staff diagnostics
+
+## Slot states
+
+Current modeled states:
+- `available`
+- `booked`
+- `held`
+- `closed`
+- `past`
+- `insufficient_duration`
+- `continuation`
+
+Notes:
+- `continuation` exists in the engine skeleton for future internal/staff-facing use.
+- the current public customer flow still collapses continuation segments into the same visible behavior it already had before this refactor.
+
+## Repository-backed inputs
+
+Availability now has explicit repository boundaries for:
+- `StaffRepository`
+- `StaffScheduleRepository`
+- `BlockOffRepository`
+- `BookingRepository`
+- `ServiceDurationRuleRepository`
+
+This keeps the future customer API and future staff dashboard on one availability path.
+
+## Booking lifecycle alignment
+
+Shared lifecycle actions still live in `BookingServiceContract` and `DefaultBookingService`:
 - `createBooking(input)`
+- `getBookingById(id)`
+- `lookupBooking(referenceCode, phone)`
 - `confirmBooking(id)`
 - `checkInBooking(id)`
 - `completeBooking(id, actualCompletedAt)`
 - `cancelBooking(id, reason)`
 - `rescheduleBooking(id, newDate, newStartTime)`
-- `getBookingById(id)`
-- `lookupBooking(referenceCode, phone)`
-- `searchCustomers(query)`
-- `upsertCustomerFromBooking(input)`
 
-Lifecycle notes:
-- Web booking default is `pending`.
-- Final availability recheck must happen before create or confirm.
-- `TEMP_HOLD` is separate from booking status and should never be collapsed into `confirmed`.
-- `completed` captures `actualCompletedAt` so future slot release logic can reopen unused time.
+Rules carried forward:
+- web booking defaults to `pending`
+- final availability recheck must happen before create or confirm
+- `TEMP_HOLD` is not a booking status
+- completed early can support future slot release behavior
 
-## Pool staff vs specific staff mode
+## Pool vs specific staff
 
-### Pool mode
-- `assignedStaffMode = pool`
-- Availability shows a slot when at least one eligible staff member can cover the full duration.
-- Staff assignment can happen later.
+Pool mode:
+- query shows a start slot when at least one eligible staff member can cover the full blocked duration
 
-### Specific staff mode
-- `assignedStaffMode = specific_staff`
-- Availability is evaluated only against the selected staff member’s working schedule, block-offs, and stored bookings.
+Specific staff mode:
+- query evaluates only the selected staff member's schedule, bookings, holds, and block-offs
 
 ## Current mock status
 
-- The mock flow still runs locally, but it now uses the shared contract shapes.
-- The next phase should replace the local runtime with real implementations of these contracts rather than building a second booking model.
+- The public demo still runs locally.
+- Step 2 now calls a shared public booking context route:
+  - `POST /api/public-booking/context`
+- Step 3 now creates bookings through:
+  - `POST /api/public-booking/bookings`
+- Step 4 now reads persisted bookings through:
+  - `GET /api/public-booking/bookings/:id`
+- When `DATABASE_URL` or `POSTGRES_URL` is configured, the same service path can use Postgres-backed repositories.
+- TEMP_HOLD persistence remains TODO and still falls back to demo-only behavior.

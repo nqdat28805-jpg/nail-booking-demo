@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { fetchSharedBookingById, type SharedBookingRecordPayload } from "../../booking-api";
 import {
   BOOKING_STORAGE_KEY,
   BOOKING_STORAGE_UPDATED_EVENT,
@@ -32,6 +33,8 @@ export function ConfirmationExperience() {
     () => readStoredJson<PersistedGuestDetailsDraft>(GUEST_DETAILS_STORAGE_KEY),
   );
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [sharedBookingRecord, setSharedBookingRecord] =
+    useState<SharedBookingRecordPayload | null>(null);
 
   useEffect(() => {
     const syncDrafts = () => {
@@ -71,22 +74,72 @@ export function ConfirmationExperience() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!bookingDraft?.persistedBookingId) {
+      setSharedBookingRecord(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void fetchSharedBookingById(bookingDraft.persistedBookingId)
+      .then((payload) => {
+        if (!cancelled) {
+          setSharedBookingRecord(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSharedBookingRecord(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingDraft?.persistedBookingId]);
+
+  const persistedBooking = sharedBookingRecord?.booking ?? null;
+  const displayDate =
+    bookingDraft?.dateLabel ?? persistedBooking?.date ?? null;
+  const displayStartTime =
+    persistedBooking?.startTime ?? bookingDraft?.startTime ?? null;
+  const displayEndTime =
+    persistedBooking?.estimatedEndTime ?? bookingDraft?.endTime ?? null;
+  const displayDuration =
+    persistedBooking?.durationMinutes ?? bookingDraft?.durationMinutes ?? null;
+  const displayStaffName =
+    sharedBookingRecord?.assignedStaffName ??
+    bookingDraft?.staffName ??
+    "Bất kỳ thợ nào";
+
   const isMissingData =
-    !bookingDraft?.dateLabel ||
-    !bookingDraft.startTime ||
-    !bookingDraft.endTime ||
-    !bookingDraft.staffName ||
-    bookingDraft.status !== "pending" ||
+    !displayDate ||
+    !displayStartTime ||
+    !displayEndTime ||
     !guestDraft?.fullName ||
     !guestDraft.phone;
 
   const bookingReference =
-    bookingDraft && guestDraft
+    persistedBooking?.referenceCode ??
+    bookingDraft?.referenceCode ??
+    (bookingDraft && guestDraft
       ? createBookingReference(bookingDraft, guestDraft)
-      : null;
-  const selectedPaymentMethod = guestDraft?.paymentMethod ?? DEFAULT_PAYMENT_METHOD;
+      : null);
+  const selectedPaymentMethod =
+    persistedBooking?.paymentSummary?.method ??
+    guestDraft?.paymentMethod ??
+    DEFAULT_PAYMENT_METHOD;
   const paymentDetail =
-    guestDraft ? getPaymentDetail(selectedPaymentMethod, guestDraft) : null;
+    persistedBooking?.paymentSummary?.detailValue
+      ? {
+          label:
+            persistedBooking.paymentSummary.detailLabel ?? "Chi tiết thanh toán",
+          value: persistedBooking.paymentSummary.detailValue,
+        }
+      : guestDraft
+        ? getPaymentDetail(selectedPaymentMethod, guestDraft)
+        : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -144,7 +197,7 @@ export function ConfirmationExperience() {
           <>
             <section className="mb-12 text-center">
               <div className="relative mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-[#f1edea]">
-                <div className="absolute inset-0 rounded-full border border-primary/10 animate-pulse" />
+                <div className="absolute inset-0 animate-pulse rounded-full border border-primary/10" />
                 <span className="text-4xl text-primary">✓</span>
               </div>
               <h1 className="mb-2 font-serif text-3xl leading-tight tracking-tight text-foreground">
@@ -161,40 +214,41 @@ export function ConfirmationExperience() {
                 Thông tin đặt lịch
               </h2>
               <div className="space-y-5">
-                <ConfirmationRow
-                  label="Khách hàng"
-                  value={guestDraft.fullName}
-                />
-                <ConfirmationRow
-                  label="Số điện thoại"
-                  value={guestDraft.phone}
-                />
+                <ConfirmationRow label="Khách hàng" value={guestDraft.fullName} />
+                <ConfirmationRow label="Số điện thoại" value={guestDraft.phone} />
                 <ConfirmationRow
                   label="Dịch vụ"
-                  value={guestDraft.serviceLabel || "Dịch vụ móng theo yêu cầu"}
+                  value={
+                    persistedBooking?.pricingSummary?.serviceDisplayLabel ??
+                    guestDraft.serviceLabel ??
+                    "Dịch vụ móng theo yêu cầu"
+                  }
                   detail={`${guestDraft.guestCount} • ${guestDraft.setType}`}
                 />
-                <ConfirmationRow label="Ngày" value={bookingDraft.dateLabel!} />
-                <ConfirmationRow
-                  label="Giờ bắt đầu"
-                  value={bookingDraft.startTime!}
-                />
+                <ConfirmationRow label="Ngày" value={displayDate} />
+                <ConfirmationRow label="Giờ bắt đầu" value={displayStartTime} />
                 <ConfirmationRow
                   label="Giờ dự kiến xong"
-                  value={bookingDraft.endTime!}
+                  value={displayEndTime}
                 />
                 <ConfirmationRow
                   label="Thời lượng dự kiến"
-                  value={`${bookingDraft.durationMinutes} phút`}
+                  value={`${displayDuration} phút`}
                 />
-                <ConfirmationRow label="Thợ" value={bookingDraft.staffName} />
+                <ConfirmationRow label="Thợ" value={displayStaffName} />
                 <ConfirmationRow
                   label="Phương thức thanh toán"
                   value={getPaymentMethodLabel(selectedPaymentMethod)}
                 />
                 <ConfirmationRow
                   label="Trạng thái thanh toán"
-                  value={getPaymentStatusLabel(selectedPaymentMethod)}
+                  value={
+                    persistedBooking?.paymentSummary?.status
+                      ? getPaymentStatusLabelFromSummary(
+                          persistedBooking.paymentSummary.status,
+                        )
+                      : getPaymentStatusLabel(selectedPaymentMethod)
+                  }
                 />
                 {paymentDetail ? (
                   <ConfirmationRow
@@ -277,6 +331,21 @@ function getPaymentStatusLabel(method: PaymentMethod) {
       return "Đã nhập thông tin thẻ";
     default:
       return "Thanh toán khi đến lịch";
+  }
+}
+
+function getPaymentStatusLabelFromSummary(status: string) {
+  switch (status) {
+    case "awaiting_bank_transfer":
+      return "Chờ thanh toán chuyển khoản";
+    case "card_details_captured":
+      return "Đã nhập thông tin thẻ";
+    case "pay_at_salon":
+      return "Thanh toán khi đến lịch";
+    case "paid":
+      return "Đã thanh toán";
+    default:
+      return "Chờ xác nhận thanh toán";
   }
 }
 

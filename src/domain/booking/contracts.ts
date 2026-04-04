@@ -1,5 +1,11 @@
 import type { AvailabilityQuery } from "@/src/domain/availability/types";
-import type { Booking, BookingChannel, BookingSource } from "@/src/domain/booking/types";
+import type {
+  Booking,
+  BookingChannel,
+  BookingPaymentSummary,
+  BookingPricingSummary,
+  BookingSource,
+} from "@/src/domain/booking/types";
 import type { Customer } from "@/src/domain/customer/types";
 
 export interface CreateBookingInput {
@@ -23,6 +29,9 @@ export interface CreateBookingInput {
   channel: BookingChannel;
   assignedStaffMode: Booking["assignedStaffMode"];
   assignedStaffId?: string | null;
+  shopId?: string | null;
+  pricingSummary?: BookingPricingSummary | null;
+  paymentSummary?: BookingPaymentSummary | null;
   finalAvailabilityQuery: AvailabilityQuery;
 }
 

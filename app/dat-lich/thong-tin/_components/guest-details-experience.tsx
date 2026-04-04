@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BookingApiError, createSharedBooking } from "../../booking-api";
 import {
   BOOKING_STORAGE_KEY,
   BOOKING_STORAGE_UPDATED_EVENT,
@@ -21,7 +22,6 @@ import {
   notifyGuestStorageUpdated,
   PAYMENT_METHOD_OPTIONS,
   readStoredJson,
-  simulateFinalAvailabilityCheck,
   toVietnamE164,
   type BookingFlowNotice,
   type PaymentMethod,
@@ -200,6 +200,8 @@ export function GuestDetailsExperience() {
   const [availabilityConflict, setAvailabilityConflict] =
     useState<BookingFlowNotice | null>(null);
   const [nowTs, setNowTs] = useState(() => Date.now());
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const guestErrors = validateGuestForm(formValues);
   const paymentErrors = validatePaymentForm(paymentValues);
@@ -319,12 +321,13 @@ export function GuestDetailsExperience() {
     updateField("phone", formatVietnamesePhone(value));
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setHasAttemptedSubmit(true);
     setAvailabilityConflict(null);
+    setSubmitError(null);
 
-    if (!canSubmit || bookingContextMissing) {
+    if (!canSubmit || bookingContextMissing || !bookingDraft) {
       return;
     }
 
@@ -351,52 +354,73 @@ export function GuestDetailsExperience() {
       JSON.stringify(persistedGuestDraft),
     );
     notifyGuestStorageUpdated();
+    setIsSubmitting(true);
 
-    const recheckResult = simulateFinalAvailabilityCheck(
-      bookingDraft,
-      persistedGuestDraft,
-      Date.now(),
-    );
-
-    if (!recheckResult.success) {
-      const conflictNotice: BookingFlowNotice = {
-        type: "recheck_conflict",
-        message: recheckResult.message,
-        alternativeSlots: recheckResult.alternativeSlots,
-      };
-
-      setAvailabilityConflict(conflictNotice);
+    try {
+      const result = await createSharedBooking({
+        bookingDraft,
+        guestDraft: persistedGuestDraft,
+      });
 
       window.sessionStorage.setItem(
         BOOKING_STORAGE_KEY,
         JSON.stringify({
           ...bookingDraft,
-          startTime: null,
-          endTime: null,
+          date: result.booking.date,
+          startTime: result.booking.startTime,
+          endTime: result.booking.estimatedEndTime,
+          durationMinutes: result.booking.durationMinutes,
+          blockedDurationMinutes: result.booking.durationMinutes,
+          status: result.booking.status ?? DEFAULT_WEB_BOOKING_STATUS,
           holdSlot: null,
           holdExpiresAt: null,
-          status: "draft",
-          latestNotice: conflictNotice,
+          latestNotice: null,
+          persistedBookingId: result.booking.id,
+          referenceCode: result.booking.referenceCode,
+          runtimeSource: result.source,
         }),
       );
       notifyBookingStorageUpdated();
 
-      return;
+      router.push("/dat-lich/xac-nhan");
+    } catch (error) {
+      if (error instanceof BookingApiError && error.status === 409) {
+        const payload = error.payload as
+          | { message?: string; alternativeSlots?: string[] }
+          | undefined;
+        const conflictNotice: BookingFlowNotice = {
+          type: "recheck_conflict",
+          message:
+            payload?.message ??
+            "Khung giờ vừa không còn khả dụng. Vui lòng chọn lại.",
+          alternativeSlots: payload?.alternativeSlots ?? [],
+        };
+
+        setAvailabilityConflict(conflictNotice);
+
+        window.sessionStorage.setItem(
+          BOOKING_STORAGE_KEY,
+          JSON.stringify({
+            ...bookingDraft,
+            startTime: null,
+            endTime: null,
+            holdSlot: null,
+            holdExpiresAt: null,
+            status: "draft",
+            latestNotice: conflictNotice,
+          }),
+        );
+        notifyBookingStorageUpdated();
+      } else {
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : "Không thể tạo lịch hẹn từ lớp dữ liệu dùng chung.",
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    window.sessionStorage.setItem(
-      BOOKING_STORAGE_KEY,
-        JSON.stringify({
-          ...bookingDraft,
-          status: DEFAULT_WEB_BOOKING_STATUS,
-          holdSlot: null,
-          holdExpiresAt: null,
-          latestNotice: null,
-      }),
-    );
-    notifyBookingStorageUpdated();
-
-    router.push("/dat-lich/xac-nhan");
   }
 
   return (
@@ -813,17 +837,24 @@ export function GuestDetailsExperience() {
               </section>
 
               <div className="pt-2 text-center">
+                {submitError ? (
+                  <p className="mb-3 text-sm leading-6 text-[#8a5d5f]">
+                    {submitError}
+                  </p>
+                ) : null}
                 <button
                   type="submit"
-                  disabled={!canSubmit || Boolean(activeConflictNotice)}
+                  disabled={
+                    !canSubmit || Boolean(activeConflictNotice) || isSubmitting
+                  }
                   className={[
                     "w-full rounded-full py-5 font-bold uppercase tracking-[0.12em] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
-                    canSubmit && !activeConflictNotice
+                    canSubmit && !activeConflictNotice && !isSubmitting
                       ? "bg-[linear-gradient(135deg,#7f5253_0%,#d9a2a2_100%)] text-white shadow-[0_12px_40px_rgba(127,82,83,0.12)] active:scale-[0.99]"
                       : "bg-[#eadfdb] text-[#af9a95]",
                   ].join(" ")}
                 >
-                  XÁC NHẬN
+                  {isSubmitting ? "ĐANG XÁC NHẬN" : "XÁC NHẬN"}
                 </button>
               </div>
             </form>

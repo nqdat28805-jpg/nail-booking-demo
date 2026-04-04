@@ -9,6 +9,11 @@ import { ServiceConfigurator } from "./service-configurator";
 import { SlotPanel } from "./slot-panel";
 import { StaffPicker } from "./staff-picker";
 import {
+  fetchSharedBookingContext,
+  type SharedBookingContextPayload,
+} from "../booking-api";
+import {
+  addMinutesToTime,
   BOOKING_STORAGE_KEY,
   buildAvailabilityQuery,
   buildServiceSummaryLabel,
@@ -29,6 +34,8 @@ import {
   notifyBookingStorageUpdated,
   normalizeServiceSelections,
   readStoredJson,
+  SHARED_BOOKING_BRANCH_ID,
+  STAFF_OPTIONS,
   shiftMonthCursor,
   TEMP_HOLD_DURATION_MS,
   type BookingFlowNotice,
@@ -70,29 +77,24 @@ export function BookingExperience() {
   const [notice, setNotice] = useState<BookingFlowNotice | null>(initialState.notice);
   const [nowTs, setNowTs] = useState(0);
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
+  const [sharedContext, setSharedContext] =
+    useState<SharedBookingContextPayload | null>(null);
 
-  const selectedStaff = getStaffById(selectedStaffId);
-  const durationMinutes = getDurationMinutes(selectedStaffId, serviceSelections);
-  const blockedDurationMinutes = getBlockedDurationMinutes(durationMinutes);
   const holdRemainingMs =
     selectedSlot && holdExpiresAt
       ? Math.max(0, holdExpiresAt - nowTs)
       : 0;
   const hasActiveHold = Boolean(selectedSlot && holdExpiresAt && holdRemainingMs > 0);
   const effectiveSelectedSlot = hasActiveHold ? selectedSlot : null;
-  const durationEstimate = getDurationEstimate(
+  const fallbackDurationMinutes = getDurationMinutes(selectedStaffId, serviceSelections);
+  const fallbackBlockedDurationMinutes =
+    getBlockedDurationMinutes(fallbackDurationMinutes);
+  const fallbackDurationEstimate = getDurationEstimate(
     selectedStaffId,
     serviceSelections,
     effectiveSelectedSlot,
   );
-  const endTime = durationEstimate.estimatedEndTime ?? null;
-  const selectedDateLabel = selectedDate ? formatDateLabel(selectedDate) : null;
-  const serviceSummaryLabel = buildServiceSummaryLabel(serviceSelections);
-  const occupiedSlotTimes = useMemo(
-    () => getOccupiedSlotTimes(effectiveSelectedSlot, blockedDurationMinutes),
-    [blockedDurationMinutes, effectiveSelectedSlot],
-  );
-  const calendarMonth = useMemo(
+  const fallbackCalendarMonth = useMemo(
     () =>
       getCalendarMonth(
         visibleMonth,
@@ -102,7 +104,7 @@ export function BookingExperience() {
       ),
     [effectiveSelectedSlot, selectedStaffId, serviceSelections, visibleMonth],
   );
-  const slots = useMemo(
+  const fallbackSlots = useMemo(
     () =>
       selectedDate
         ? getSlotAvailabilityForDay(
@@ -114,6 +116,29 @@ export function BookingExperience() {
         : [],
     [effectiveSelectedSlot, selectedDate, selectedStaffId, serviceSelections],
   );
+  const staffOptions = sharedContext?.staffOptions?.length
+    ? sharedContext.staffOptions
+    : STAFF_OPTIONS;
+  const selectedStaff =
+    staffOptions.find((staff) => staff.id === selectedStaffId) ??
+    getStaffById(selectedStaffId);
+  const durationEstimate = sharedContext?.durationEstimate ?? fallbackDurationEstimate;
+  const durationMinutes = durationEstimate.durationMinutes;
+  const blockedDurationMinutes =
+    durationEstimate.blockedDurationMinutes ?? fallbackBlockedDurationMinutes;
+  const endTime =
+    durationEstimate.estimatedEndTime ??
+    (effectiveSelectedSlot
+      ? addMinutesToTime(effectiveSelectedSlot, blockedDurationMinutes)
+      : null);
+  const selectedDateLabel = selectedDate ? formatDateLabel(selectedDate) : null;
+  const serviceSummaryLabel = buildServiceSummaryLabel(serviceSelections);
+  const occupiedSlotTimes = useMemo(
+    () => getOccupiedSlotTimes(effectiveSelectedSlot, blockedDurationMinutes),
+    [blockedDurationMinutes, effectiveSelectedSlot],
+  );
+  const calendarMonth = sharedContext?.calendarMonth ?? fallbackCalendarMonth;
+  const slots = sharedContext?.slots ?? fallbackSlots;
   const canContinue = Boolean(selectedDate && effectiveSelectedSlot);
   const holdCountdownLabel = hasActiveHold
     ? formatHoldCountdown(holdRemainingMs)
@@ -122,6 +147,38 @@ export function BookingExperience() {
   useEffect(() => {
     router.prefetch("/dat-lich/thong-tin");
   }, [router]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    void fetchSharedBookingContext({
+      visibleMonth,
+      selectedDate,
+      selectedStaffId,
+      serviceSelections,
+      activeHoldSlot: effectiveSelectedSlot,
+    })
+      .then((context) => {
+        if (!isCancelled) {
+          setSharedContext(context);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setSharedContext(null);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    effectiveSelectedSlot,
+    selectedDate,
+    selectedStaffId,
+    serviceSelections,
+    visibleMonth,
+  ]);
 
   useEffect(() => {
     const storedDraft = readStoredJson<PersistedBookingDraft>(BOOKING_STORAGE_KEY);
@@ -179,13 +236,14 @@ export function BookingExperience() {
       serviceLabel: serviceSummaryLabel,
       source: "website",
       channel: "web_self_booking",
-      branchId: null,
+      branchId: SHARED_BOOKING_BRANCH_ID,
       availabilityMode: selectedStaffId === "any" ? "pool" : "specific_staff",
       availabilityQuery: buildAvailabilityQuery(
         selectedDate ?? getTodayIso(),
         selectedStaffId,
         serviceSelections,
       ),
+      runtimeSource: sharedContext?.source ?? null,
     };
 
     window.sessionStorage.setItem(BOOKING_STORAGE_KEY, JSON.stringify(draft));
@@ -206,6 +264,7 @@ export function BookingExperience() {
     selectedStaffId,
     serviceSelections,
     serviceSummaryLabel,
+    sharedContext?.source,
   ]);
 
   useEffect(() => {
@@ -395,6 +454,7 @@ export function BookingExperience() {
         />
 
         <StaffPicker
+          staffOptions={staffOptions}
           selectedStaffId={selectedStaffId}
           onSelect={handleStaffSelect}
         />

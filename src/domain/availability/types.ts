@@ -12,7 +12,17 @@ export type AvailabilitySlotState =
   | "held"
   | "past"
   | "closed"
+  | "continuation"
   | "insufficient_duration";
+
+export type AvailabilityInvalidationReasonCode =
+  | "existing_booking"
+  | "temporary_hold"
+  | "outside_working_schedule"
+  | "block_off"
+  | "past_time"
+  | "insufficient_contiguous_time"
+  | "continuation_segment";
 
 export interface DurationInput {
   guestCount: number;
@@ -50,9 +60,11 @@ export interface AvailabilitySlot {
   endTime: string;
   state: AvailabilitySlotState;
   reason?: string | null;
+  invalidationReasonCode?: AvailabilityInvalidationReasonCode | null;
   continuousFreeMinutes: number;
   availableStaffIds?: string[];
   holdExpiresAt?: string | null;
+  alternativeStartTimes?: string[];
 }
 
 export interface AvailabilityResult {
@@ -71,7 +83,11 @@ export interface TemporaryHold {
   startTime: string;
   endTime: string;
   staffId?: string | null;
+  assignedStaffMode?: StaffAssignmentMode;
+  durationMinutes?: number;
   createdBySessionId?: string | null;
   expiresAt: string;
   status: "active" | "expired" | "released" | "converted";
+  createdAt?: string;
+  updatedAt?: string;
 }

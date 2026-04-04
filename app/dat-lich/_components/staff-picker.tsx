@@ -1,6 +1,7 @@
-import { STAFF_OPTIONS } from "../booking-mock";
+import type { StaffOption } from "../booking-mock";
 
 type StaffPickerProps = {
+  staffOptions: StaffOption[];
   selectedStaffId: string;
   onSelect: (staffId: string) => void;
 };
@@ -12,14 +13,18 @@ const avatarBackgrounds: Record<string, string> = {
   elena: "bg-[linear-gradient(135deg,#7d5a58_0%,#c99c8e_100%)] text-white",
 };
 
-export function StaffPicker({ selectedStaffId, onSelect }: StaffPickerProps) {
+export function StaffPicker({
+  staffOptions,
+  selectedStaffId,
+  onSelect,
+}: StaffPickerProps) {
   return (
     <section className="space-y-4">
       <div className="px-2">
         <h2 className="font-serif text-lg text-primary">Chọn thợ</h2>
       </div>
       <div className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {STAFF_OPTIONS.map((staff) => {
+        {staffOptions.map((staff) => {
           const isSelected = staff.id === selectedStaffId;
 
           return (
@@ -41,7 +46,7 @@ export function StaffPicker({ selectedStaffId, onSelect }: StaffPickerProps) {
                 <span
                   className={[
                     "flex h-full w-full items-center justify-center rounded-full text-xl font-semibold tracking-[0.12em]",
-                    avatarBackgrounds[staff.id],
+                    avatarBackgrounds[staff.id] ?? "bg-primary text-white",
                   ].join(" ")}
                 >
                   {staff.initials}

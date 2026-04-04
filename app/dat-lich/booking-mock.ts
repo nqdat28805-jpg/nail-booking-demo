@@ -9,6 +9,7 @@ import { WEB_DEFAULT_BOOKING_STATUS } from "@/src/domain/booking/lifecycle";
 import type {
   Booking,
   BookingChannel,
+  BookingPaymentMethod,
   BookingServiceSelections,
   BookingSource,
   BookingStatus,
@@ -19,6 +20,7 @@ import type {
   StaffAssignmentMode,
 } from "@/src/domain/booking/types";
 import type { ServiceDurationRule } from "@/src/domain/config/types";
+import { createDemoBookingRuntime } from "@/src/infrastructure/memory";
 import type { BlockOff, Staff, StaffWorkingSchedule } from "@/src/domain/staff/types";
 
 export type DayStatus = "available" | "limited" | "closed";
@@ -74,6 +76,9 @@ export type PersistedBookingDraft = {
   branchId?: string | null;
   availabilityMode: StaffAssignmentMode;
   availabilityQuery: AvailabilityQuery;
+  persistedBookingId?: string | null;
+  referenceCode?: string | null;
+  runtimeSource?: "database" | "memory_fallback" | null;
 };
 
 export type PersistedGuestDetailsDraft = {
@@ -92,10 +97,7 @@ export type PersistedGuestDetailsDraft = {
   paymentDetails: PersistedPaymentDetails | null;
 };
 
-export type PaymentMethod =
-  | "pay_at_salon"
-  | "bank_transfer"
-  | "local_card";
+export type PaymentMethod = BookingPaymentMethod;
 
 export type PersistedPaymentDetails = {
   cardNumber?: string;
@@ -113,6 +115,7 @@ export const DEFAULT_WEB_BOOKING_STATUS = WEB_DEFAULT_BOOKING_STATUS;
 export const MOCK_TODAY_ISO = "2026-04-01";
 export const MOCK_CURRENT_TIME = "11:30";
 export const DEFAULT_PAYMENT_METHOD: PaymentMethod = "pay_at_salon";
+export const SHARED_BOOKING_BRANCH_ID = "19nail-main";
 export const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 export const TEMP_HOLD_DURATION_MS = 5 * 60 * 1000;
 export const SLOT_INTERVAL_MINUTES = 30;
@@ -269,6 +272,10 @@ const MOCK_BLOCK_OFFS: BlockOff[] = [
     "2026-04-08T19:00:00+07:00",
   ),
 ];
+
+let demoBookingRuntime:
+  | ReturnType<typeof createDemoBookingRuntime>
+  | null = null;
 
 type MonthCursor = {
   year: number;
@@ -470,78 +477,24 @@ export function getSlotAvailabilityForDay(
   serviceSelections: ServiceSelections,
   activeHoldSlot: string | null = null,
 ) {
-  const durationInput = buildDurationInput(serviceSelections, staffId);
-  const durationEstimate = estimateDurationDetails(durationInput);
-  const targetStaffIds =
-    staffId === "any" ? BOOKABLE_STAFF_IDS : [staffId];
-
-  if (targetStaffIds.length === 0) {
-    return [];
-  }
-
-  const staffMaps = targetStaffIds.map((targetId) =>
-    getStaffDailyAvailability(targetId, iso, activeHoldSlot),
+  const result = getDemoBookingRuntime().queryAvailabilitySync(
+    buildAvailabilityQuery(iso, staffId, serviceSelections),
   );
 
-  return SLOT_TIMES.map((startTime) => {
-    const perStaff = staffMaps.map((availability) => {
-      const baseState = availability.slotStates[startTime];
-      const freeMinutes = availability.availableWindowMinutes[startTime] ?? 0;
+  if (!activeHoldSlot) {
+    return result.slots;
+  }
 
-      if (baseState !== "open") {
-        return {
-          state: mapBaseStateToSlotState(baseState),
-          continuousFreeMinutes: 0,
-        };
-      }
-
-      if (freeMinutes < durationEstimate.blockedDurationMinutes) {
-        return {
-          state: "insufficient_duration" as const,
-          continuousFreeMinutes: freeMinutes,
-        };
-      }
-
-      return {
-        state: "available" as const,
-        continuousFreeMinutes: freeMinutes,
-      };
-    });
-
-    const availableCandidate = perStaff.find((candidate) => candidate.state === "available");
-    if (availableCandidate) {
-      return {
-        startTime,
-        endTime: addMinutesToTime(startTime, durationEstimate.blockedDurationMinutes),
-        state: "available" as const,
-        reason: null,
-        continuousFreeMinutes: availableCandidate.continuousFreeMinutes,
-        availableStaffIds: targetStaffIds.filter(
-          (targetId, index) => perStaff[index].state === "available",
-        ),
-        holdExpiresAt: null,
-      };
-    }
-
-    const aggregateState = resolvePoolSlotState(perStaff.map((candidate) => candidate.state));
-    const maxFreeMinutes = perStaff.reduce(
-      (best, candidate) => Math.max(best, candidate.continuousFreeMinutes),
-      0,
-    );
-
-    return {
-      startTime,
-      endTime: addMinutesToTime(startTime, durationEstimate.blockedDurationMinutes),
-      state: aggregateState,
-      reason:
-        aggregateState === "insufficient_duration"
-          ? INSUFFICIENT_DURATION_MESSAGE
-          : getSlotStateReason(aggregateState),
-      continuousFreeMinutes: maxFreeMinutes,
-      availableStaffIds: [],
-      holdExpiresAt: null,
-    };
-  });
+  return result.slots.map((slot) =>
+    slot.startTime === activeHoldSlot
+      ? {
+          ...slot,
+          state: "available" as const,
+          reason: null,
+          invalidationReasonCode: null,
+        }
+      : slot,
+  );
 }
 
 export function getStaffById(staffId: string): StaffOption {
@@ -578,7 +531,7 @@ export function buildAvailabilityQuery(
 ): AvailabilityQuery {
   return {
     date,
-    branchId: null,
+    branchId: SHARED_BOOKING_BRANCH_ID,
     requestedStaffId: staffId === "any" ? null : staffId,
     staffAssignmentMode: getStaffAssignmentMode(staffId),
     durationInput: buildDurationInput(selections, staffId),
@@ -1214,6 +1167,7 @@ function createMockStoredBooking(
   return {
     id: `mock-booking-${staffId}-${iso}-${index}`,
     referenceCode: `MOCK-${iso.replaceAll("-", "")}-${index}`,
+    shopId: "19nail-studio",
     customerId: null,
     customerSnapshot: {
       fullName: "Mock Customer",
@@ -1236,6 +1190,8 @@ function createMockStoredBooking(
     status: index % 2 === 0 ? "confirmed" : "checked_in",
     assignedStaffMode: "specific_staff",
     assignedStaffId: staffId,
+    pricingSummary: null,
+    paymentSummary: null,
     timestamps: {
       createdAt: `${iso}T08:00:00+07:00`,
       updatedAt: `${iso}T08:00:00+07:00`,
@@ -1265,7 +1221,7 @@ function buildDurationInput(
     nailType: normalizedSelections.nailType,
     polishStyle: normalizedSelections.polishStyle,
     effects: normalizedSelections.effects,
-    branchId: null,
+    branchId: SHARED_BOOKING_BRANCH_ID,
     requestedStaffId: staffId === "any" ? null : staffId,
     staffAssignmentMode: getStaffAssignmentMode(staffId),
     processingStrategy: "sequential",
@@ -1276,37 +1232,50 @@ function estimateDurationDetails(
   input: DurationInput,
   startTime: string | null = null,
 ): DurationEstimate {
-  const normalizedEffects = input.effects.includes("none") ? [] : input.effects;
-  const matchedRule = MOCK_SERVICE_DURATION_RULES.find(
-    (rule) =>
-      rule.setType === input.setType &&
-      rule.nailType === input.nailType &&
-      rule.polishStyle === input.polishStyle &&
-      rule.active,
-  );
+  return getDemoBookingRuntime().estimateDurationSync(input, startTime);
+}
 
-  const baseDurationMinutes = matchedRule?.baseDurationMinutes ?? 60;
-  const effectMinutes = normalizedEffects.reduce((total, effect) => {
-    return total + (effect === "none" ? 0 : EFFECT_EXTRA_MINUTES[effect] ?? 0);
-  }, 0);
-  const durationMinutes = roundUpToNearest(
-    (baseDurationMinutes + effectMinutes) * input.guestCount,
-    SLOT_INTERVAL_MINUTES,
-  );
+function getDemoBookingRuntime() {
+  if (demoBookingRuntime) {
+    return demoBookingRuntime;
+  }
 
-  return {
-    durationMinutes,
-    blockedDurationMinutes: durationMinutes,
+  demoBookingRuntime = createDemoBookingRuntime({
+    staff: STAFF_OPTIONS.filter((staff) => staff.id !== "any"),
+    schedules: STAFF_WORKING_SCHEDULES,
+    blockOffs: MOCK_BLOCK_OFFS,
+    durationRules: MOCK_SERVICE_DURATION_RULES,
+    businessHours: {
+      openTime: convertMinutesToTime(SALON_OPEN_MINUTES),
+      closeTime: convertMinutesToTime(SALON_CLOSE_MINUTES),
+    },
     slotIntervalMinutes: SLOT_INTERVAL_MINUTES,
-    estimatedEndTime: startTime ? addMinutesToTime(startTime, durationMinutes) : null,
-    matchedRuleCodes: matchedRule ? [matchedRule.code] : ["draft-fallback-rule"],
-    notes: [
-      "Draft duration estimate from shared service duration rules.",
-      input.processingStrategy === "parallel"
-        ? "Parallel guest processing is TBD and not implemented in the mock yet."
-        : "Guest count currently scales sequentially in the mock.",
-    ],
-  };
+    effectExtraMinutes: EFFECT_EXTRA_MINUTES,
+    seedBookingsByStaffAndDate: ({ staffId, date }) =>
+      getMockStoredBookings(staffId, date),
+    seedTemporaryHoldsByStaffAndDate: ({ staffId, date }) =>
+      getHeldTemporaryHolds(staffId, date),
+  });
+
+  return demoBookingRuntime;
+}
+
+function getHeldTemporaryHolds(staffId: string, iso: string) {
+  return getHeldIntervals(staffId, iso).map((interval, index) => ({
+    id: `mock-hold-${staffId}-${iso}-${index}`,
+    branchId: null,
+    date: iso,
+    startTime: convertMinutesToTime(interval.startMinutes),
+    endTime: convertMinutesToTime(interval.endMinutes),
+    staffId,
+    assignedStaffMode: "specific_staff" as const,
+    durationMinutes: interval.endMinutes - interval.startMinutes,
+    createdBySessionId: `seed-${staffId}`,
+    expiresAt: `${iso}T${convertMinutesToTime(interval.endMinutes)}:00+07:00`,
+    status: "active" as const,
+    createdAt: `${iso}T08:00:00+07:00`,
+    updatedAt: `${iso}T08:00:00+07:00`,
+  }));
 }
 
 function getStaffAssignmentMode(staffId: string): StaffAssignmentMode {

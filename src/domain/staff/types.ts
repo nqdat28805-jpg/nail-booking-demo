@@ -6,9 +6,15 @@ export interface Staff {
   initials: string;
   branchId?: string | null;
   active: boolean;
+  sortOrder?: number;
   role?: "staff" | "manager" | "admin";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ScheduleBreakRange {
+  startTime: string;
+  endTime: string;
 }
 
 export interface StaffWorkingSchedule {
@@ -18,6 +24,7 @@ export interface StaffWorkingSchedule {
   dayOfWeek: DayOfWeek;
   startTime: string;
   endTime: string;
+  breakRanges?: ScheduleBreakRange[];
   isWorkingDay: boolean;
   timezone: string;
   effectiveFrom?: string | null;

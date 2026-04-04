@@ -3,11 +3,28 @@ import type {
   AvailabilityResult,
   DurationEstimate,
   DurationInput,
+  TemporaryHold,
 } from "@/src/domain/availability/types";
 
+export interface CreateBookingHoldInput {
+  date: string;
+  startTime: string;
+  durationMinutes: number;
+  branchId?: string | null;
+  requestedStaffId?: string | null;
+  createdBySessionId?: string | null;
+}
+
+export interface ReleaseBookingHoldInput {
+  holdId: string;
+  releasedBySessionId?: string | null;
+}
+
 export interface AvailabilityServiceContract {
-  estimateDuration(input: DurationInput): Promise<DurationEstimate>;
+  estimateDuration(input: DurationInput, startTime?: string | null): Promise<DurationEstimate>;
   queryAvailability(input: AvailabilityQuery): Promise<AvailabilityResult>;
+  createTemporaryHold?(input: CreateBookingHoldInput): Promise<TemporaryHold>;
+  releaseTemporaryHold?(input: ReleaseBookingHoldInput): Promise<void>;
 }
 
 export const unimplementedAvailabilityService: AvailabilityServiceContract = {

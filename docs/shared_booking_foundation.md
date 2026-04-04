@@ -2,40 +2,99 @@
 
 ## What was refactored
 
-The customer-side mock booking flow was moved toward a shared domain-first shape without changing the public UI flow itself.
+This pass keeps the customer demo UI unchanged while moving the codebase one layer closer to a real shared backend.
 
-Key refactors:
-- Added `src/domain/booking/*` for booking entities, lifecycle rules, and booking service contracts.
-- Added `src/domain/availability/*` for duration estimation and availability query contracts.
-- Added `src/domain/customer/*` and `src/domain/staff/*` for shared customer, staff, schedule, and block-off models.
-- Added `src/domain/config/*` for service duration rules and a code-first schema draft.
-- Refactored `app/dat-lich/booking-mock.ts` so the current public demo flow now stores richer shared-domain-shaped booking data.
+The latest layer now adds:
+- a shared runtime selector that prefers Postgres when `DATABASE_URL` or `POSTGRES_URL` is configured
+- real Postgres repository adapters for staff, schedules, block-off windows, duration rules, and bookings
+- thin public booking API routes that the current customer flow can call without changing the visible UI
+- a memory fallback runtime so local/demo use still works when no database is configured
+
+Added:
+- shared repository contracts under `src/domain/repositories/*`
+- application service skeletons under `src/application/services/*`
+- a shared availability engine skeleton in `src/domain/availability/engine.ts`
+- in-memory repository adapters and a demo runtime under `src/infrastructure/memory/*`
+- stronger booking/payment/pricing model support in the shared domain
+- Postgres-backed runtime/bootstrap modules under `src/server/*`
+- public booking routes under `app/api/public-booking/*`
+
+Preserved:
+- landing page pricing section for `19NAIL.STUDIO`
+- Step 2 layout, labels, real-date behavior, and slot flow
+- Step 3 contact and payment flow
+- Step 4 confirmation and payment summary flow
 
 ## Shared domain overview
 
 ### Booking
-- One booking entity is intended to serve web self-booking, future staff dashboard booking, and future social-assisted booking.
+- One `Booking` entity still serves customer web, future staff dashboard, and future assisted booking flows.
 - `source` and `channel` remain separate fields.
-- `assignedStaffMode` supports both pool mode and specific-staff mode.
-- Lifecycle rules are centralized in `src/domain/booking/lifecycle.ts`.
+- `assignedStaffMode` still supports both `pool` and `specific_staff`.
+- The booking model now also has draft-ready payment and pricing summary fields so the current Step 3 and Step 4 behavior can map to the eventual shared schema.
 
-### Availability
-- `DurationInput` and `DurationEstimate` define the duration engine contract.
-- `AvailabilityQuery`, `AvailabilitySlot`, and `AvailabilityResult` define the shared availability engine contract.
-- The mock runtime now uses explicit duration rules, staff working schedules, block-off windows, and mock stored bookings.
+### Repositories
+- `BookingRepository`
+- `CustomerRepository`
+- `StaffRepository`
+- `StaffScheduleRepository`
+- `BlockOffRepository`
+- `ServiceDurationRuleRepository`
+- `AuditLogRepository`
 
-### Customer and staff
-- `Customer` is the normalized shared customer record.
-- `Staff`, `StaffWorkingSchedule`, and `BlockOff` provide the minimum shared scheduling foundation needed by both customer and staff surfaces later.
+These are the minimum persistence boundaries that both customer and future staff flows should use.
+
+### Services
+- `DefaultDurationService`
+- `DefaultAvailabilityService`
+- `DefaultBookingService`
+- `DefaultCustomerService`
+
+These are still skeletons, but their method signatures are backend-ready and align with the shared contracts already introduced earlier.
+
+### Availability engine
+- `runAvailabilityEngine(...)` is now the shared engine entrypoint.
+- It models:
+  - date
+  - branch
+  - pool vs specific staff mode
+  - duration estimate
+  - staff schedules
+  - stored bookings
+  - block-off periods
+  - TEMP_HOLD windows
+- It returns:
+  - valid start slots
+  - slot states
+  - estimated end times
+  - invalidation reasons
+  - alternative slot suggestions
 
 ## How the customer flow connects now
 
-- The public booking routes still use the existing screens and session-based demo transport.
-- Those routes now depend on shared-domain-backed shapes for booking status, source, channel, staff assignment mode, duration estimate, and availability query context.
-- This keeps the current demo intact while reducing the gap to a real backend-backed booking engine.
+- The public customer UI still uses session state to carry the in-progress draft between pages.
+- Step 2 now calls the shared public booking context API for:
+  - duration estimation
+  - staff list
+  - availability query
+  - month/day slot-state summaries
+- Step 3 now creates bookings through the shared `BookingService` path via `POST /api/public-booking/bookings`.
+- Step 4 now reads the persisted booking by id through `GET /api/public-booking/bookings/:id` when a shared booking has already been created.
+- The visible Step 2, Step 3, and Step 4 behavior was intentionally preserved.
 
 ## How the future staff dashboard should connect
 
-- The staff dashboard should call the same `AvailabilityServiceContract` and `BookingServiceContract`.
-- The dashboard should not create a parallel booking model.
-- Staff create/reschedule/confirm actions must reuse the same lifecycle rules, availability rules, booking entity, and audit model already added in this pass.
+- The future dashboard should call the same repository-backed services instead of building separate booking logic.
+- Staff create/reschedule/confirm/check-in/complete actions should reuse:
+  - `DefaultBookingService`
+  - `DefaultAvailabilityService`
+  - `DefaultDurationService`
+  - the shared booking lifecycle rules
+  - the same schema draft and repositories
+
+## What is still mocked
+
+- Postgres is optional until a real `DATABASE_URL` is configured; local verification in this prompt used the memory fallback runtime.
+- The public flow still uses `sessionStorage` between steps for draft transport.
+- TEMP_HOLD persistence is still draft-only and not a real backend resource yet.
+- Customer profiles and audit logs do not have a real Postgres adapter yet.

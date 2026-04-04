@@ -35,6 +35,18 @@ export type SetType = "hands" | "feet" | "both";
 export type NailType = "natural" | "tip" | "builder_gel";
 export type PolishStyle = "gel_solid" | "glitter" | "cat_eye" | "chrome";
 export type EffectOption = "none" | "sticker" | "design";
+export type BookingPaymentMethod =
+  | "pay_at_salon"
+  | "bank_transfer"
+  | "local_card";
+export type BookingPaymentStatus =
+  | "payment_not_started"
+  | "pay_at_salon"
+  | "awaiting_bank_transfer"
+  | "card_details_captured"
+  | "paid"
+  | "refunded"
+  | "voided";
 
 export type BookingActorType = "customer" | "staff" | "system";
 
@@ -53,6 +65,23 @@ export interface BookingServiceSelections {
 }
 
 export type ServiceSelections = BookingServiceSelections;
+
+export interface BookingPricingSummary {
+  shopId?: string | null;
+  priceListId?: string | null;
+  serviceDisplayLabel?: string | null;
+  quotedSubtotalLabel?: string | null;
+  quotedTotalLabel?: string | null;
+  currency?: string | null;
+}
+
+export interface BookingPaymentSummary {
+  method: BookingPaymentMethod;
+  status: BookingPaymentStatus;
+  detailLabel?: string | null;
+  detailValue?: string | null;
+  capturedAt?: string | null;
+}
 
 export interface BookingAuditMetadata {
   createdByActorType: BookingActorType;
@@ -73,6 +102,7 @@ export interface BookingTimestamps {
 export interface Booking extends BookingServiceSelections {
   id: string;
   referenceCode: string;
+  shopId?: string | null;
   customerId?: string | null;
   customerSnapshot: BookingCustomerSnapshot;
   anonymousSessionId?: string | null;
@@ -87,6 +117,8 @@ export interface Booking extends BookingServiceSelections {
   status: BookingStatus;
   assignedStaffMode: StaffAssignmentMode;
   assignedStaffId?: string | null;
+  pricingSummary?: BookingPricingSummary | null;
+  paymentSummary?: BookingPaymentSummary | null;
   timestamps: BookingTimestamps;
   auditMetadata: BookingAuditMetadata;
 }
