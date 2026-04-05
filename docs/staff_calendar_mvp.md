@@ -1,5 +1,45 @@
 # Staff Calendar MVP
 
+## Cancelled Bookings + Auto-Cancel Update
+
+### /noi-bo/lich now shows cancelled bookings directly
+- Cancelled bookings are now visible inside the same `Agenda theo staff` page.
+- Grouping still stays by staff.
+- Inside each staff group:
+  - active bookings render first
+  - cancelled bookings render after them in a compact `Đã huỷ` subsection
+- This keeps cancelled items visible without moving them to another page.
+
+### Staff grouping behavior
+- If `assigned_staff_id` exists, the booking is rendered under that exact staff member.
+- If no staff is assigned, the booking still falls back to the existing `Pool / chưa chỉ định` group.
+- This applies to both active and cancelled bookings.
+
+### 60-minute auto-cancel rule
+- Shared operational thresholds now used by `/noi-bo/lich`:
+  - `15` minutes: `Trễ lịch`
+  - `30` minutes: `Vắng mặt`
+  - `60` minutes: `Đã huỷ`
+- The `60` minute rule is not only a UI label.
+- When a booking passes that threshold without check-in on the selected current date, the shared booking service is called and the real booking status is updated to `cancelled`.
+- After that shared update, the same booking appears in the cancelled subsection under the correct staff member.
+
+### Effective vs persisted status
+- `Trễ lịch` and `Vắng mặt` are currently derived operational statuses for the calendar view.
+- `Đã huỷ` after `60` minutes is persisted as the real shared booking status through `DefaultBookingService.cancelBooking(...)`.
+- Manual cancel compatibility remains intact.
+
+### Filter updates
+- The existing status filter now includes Vietnamese labels:
+  - `Chờ xác nhận`
+  - `Đã xác nhận`
+  - `Trễ lịch`
+  - `Vắng mặt`
+  - `Đang làm`
+  - `Hoàn tất`
+  - `Đã huỷ`
+- Filtering by `Đã huỷ` now returns the cancelled bookings that were either manually cancelled or auto-cancelled by the 60-minute rule.
+
 ## Muc tieu da dat
 - Da them staff calendar/day agenda noi bo tren cung shared runtime voi customer flow.
 - Bookings duoc tao tu customer web xuat hien trong dashboard staff ma khong can mock path rieng.

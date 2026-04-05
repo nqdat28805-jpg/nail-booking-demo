@@ -1,5 +1,78 @@
 # Resume
 
+## /noi-bo/lich auto-cancel + cancelled bookings
+- Scope kept to `/noi-bo/lich` and the minimum shared status/data wiring needed for that page.
+- Files changed:
+  - `app/noi-bo/_components/staff-calendar-screen.tsx`
+  - `src/server/staff-calendar.ts`
+  - `src/application/services/booking-service.ts`
+  - `src/domain/booking/lifecycle.ts`
+  - `docs/staff_calendar_mvp.md`
+  - `docs/resume.md`
+- What changed on `/noi-bo/lich`:
+  - cancelled bookings now appear directly inside each staff section in `Agenda theo staff`
+  - active bookings render first and cancelled bookings render afterward in a compact `Đã huỷ` subsection
+  - cancelled bookings remain mapped under the correct staff member via `assignedStaffId`
+  - the detail panel still works for cancelled bookings
+  - visible page labels and status text were localized into proper Vietnamese with diacritics
+- 60-minute auto-cancel rule:
+  - `15` minutes without check-in: `Trễ lịch`
+  - `30` minutes without check-in: `Vắng mặt`
+  - `60` minutes without check-in: real shared booking status becomes `cancelled`
+  - the auto-cancel update is persisted through the shared booking service, not a front-end-only flag
+- Effective status behavior:
+  - `Trễ lịch` and `Vắng mặt` are derived operational statuses for the calendar view
+  - `Đã huỷ` is a persisted shared status once the `60` minute threshold is crossed
+- Shared backend/data path preserved:
+  - `GET /api/internal/bookings`
+  - `PATCH /api/internal/bookings/:id/status`
+  - `getSharedBookingRuntime()`
+  - `DefaultBookingService.cancelBooking(...)`
+- Verification completed for this update:
+  - `/noi-bo/lich` loads correctly
+  - active bookings still appear correctly
+  - cancelled bookings now appear directly on the staff agenda page
+  - cancelled bookings are grouped under the correct staff member
+  - overdue bookings on the current day are auto-cancelled after 60 minutes and return from the shared API as `status: cancelled`
+  - status filter still works, including `Đã huỷ`
+  - detail area still updates when selecting a cancelled booking
+  - `/`, `/dat-lich`, `/dat-lich/thong-tin`, `/dat-lich/xac-nhan`, `/noi-bo`, `/noi-bo/tho`, and `/noi-bo/lich` all return `200`
+
+## /noi-bo/tho refinement
+- Scope kept to the technician route and its minimum shared behavior only.
+- Files changed:
+  - `app/noi-bo/_components/technician-ops-screen.tsx`
+  - `docs/technician_screen_mvp.md`
+  - `docs/resume.md`
+- What changed specifically on `/noi-bo/tho`:
+  - removed the old subtitle text `Thợ vận hành nhanh`
+  - rebuilt the mobile composition to follow the lighter Stitch technician layout more literally
+  - detail is no longer visible on initial load
+  - tapping a booking now opens the detail sheet
+  - compact list cards now keep only essential information
+  - each compact booking card now exposes only one primary CTA based on booking state
+  - secondary actions moved into the detail sheet
+  - late / no-show presentation was cleaned up without changing the underlying business thresholds
+  - visible technician UI copy was localized into proper Vietnamese with diacritics
+- One-primary-action-per-card rule:
+  - upcoming booking: `Nhận khách`
+  - checked-in booking: `Hoàn tất`
+  - late / no-show attention state: `Liên hệ khách`
+  - otherwise: `Chi tiết`
+- Shared backend paths preserved:
+  - read: `GET /api/internal/bookings`
+  - write: `PATCH /api/internal/bookings/:id/status`
+  - runtime selector: `getSharedBookingRuntime()`
+  - shared service path: `DefaultBookingService`
+- Verification completed for this refinement:
+  - `/noi-bo/tho` loads on `http://127.0.0.1:3000/noi-bo/tho`
+  - detail sheet hidden on first load
+  - tapping a booking opens detail
+  - first four booking cards each render one primary action only
+  - a main-card action still updates shared booking state
+  - `/`, `/dat-lich`, `/dat-lich/thong-tin`, `/dat-lich/xac-nhan`, `/noi-bo`, `/noi-bo/lich`, `/noi-bo/nhan-su`, `/noi-bo/lich-lam-viec`, `/noi-bo/block-off`, `/noi-bo/cau-hinh`, and `/noi-bo/tho` all return `200`
+  - manager/admin routes remained intact
+
 ## Technician Screen Rebuild + Regression Repair
 - Regressions found:
   - the local app was being checked against a stale broken server process, which caused partial interactivity/hydration failures on customer and internal routes

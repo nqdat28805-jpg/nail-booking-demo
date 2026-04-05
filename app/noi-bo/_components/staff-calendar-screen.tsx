@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Booking, BookingStatus } from "@/src/domain/booking/types";
+import type { Booking, BookingPaymentMethod, BookingStatus } from "@/src/domain/booking/types";
 import type { Staff } from "@/src/domain/staff/types";
 
 type CalendarBookingItem = {
   booking: Booking;
+  effectiveStatus: BookingStatus;
   assignedStaffName: string | null;
   staffGroupKey: string;
   staffGroupLabel: string;
@@ -38,24 +39,38 @@ export function StaffCalendarScreen() {
   }, [date, staffId, status]);
 
   const groupedItems = useMemo(() => {
-    const grouped = new Map<string, { label: string; items: CalendarBookingItem[] }>();
+    const grouped = new Map<
+      string,
+      {
+        label: string;
+        activeItems: CalendarBookingItem[];
+        cancelledItems: CalendarBookingItem[];
+      }
+    >();
 
     for (const item of items) {
-      const current = grouped.get(item.staffGroupKey);
-      if (current) {
-        current.items.push(item);
-      } else {
-        grouped.set(item.staffGroupKey, {
+      const current =
+        grouped.get(item.staffGroupKey) ??
+        {
           label: item.staffGroupLabel,
-          items: [item],
-        });
+          activeItems: [],
+          cancelledItems: [],
+        };
+
+      if (item.effectiveStatus === "cancelled") {
+        current.cancelledItems.push(item);
+      } else {
+        current.activeItems.push(item);
       }
+
+      grouped.set(item.staffGroupKey, current);
     }
 
     return Array.from(grouped.entries()).map(([key, value]) => ({
       key,
       label: value.label,
-      items: value.items,
+      activeItems: value.activeItems,
+      cancelledItems: value.cancelledItems,
     }));
   }, [items]);
 
@@ -71,10 +86,12 @@ export function StaffCalendarScreen() {
         `/api/internal/bookings?date=${encodeURIComponent(date)}&staffId=${encodeURIComponent(staffId)}&status=${encodeURIComponent(status)}`,
         { cache: "no-store" },
       );
-      const payload = (await response.json()) as CalendarApiResponse;
+      const payload = (await response.json()) as CalendarApiResponse & {
+        message?: string;
+      };
 
       if (!response.ok) {
-        throw new Error((payload as any).message ?? "Khong tai duoc bookings.");
+        throw new Error(payload.message ?? "Không tải được lịch làm việc.");
       }
 
       setRuntimeSource(payload.source);
@@ -86,7 +103,9 @@ export function StaffCalendarScreen() {
           : payload.items[0]?.booking.id ?? null,
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Khong tai duoc bookings.");
+      setMessage(
+        error instanceof Error ? error.message : "Không tải được lịch làm việc.",
+      );
       setItems([]);
       setSelectedBookingId(null);
     } finally {
@@ -112,25 +131,26 @@ export function StaffCalendarScreen() {
             action,
             reason:
               action === "cancel"
-                ? "Cancelled from staff calendar MVP."
+                ? "Huỷ lịch từ màn lịch làm việc nội bộ."
                 : undefined,
           }),
         },
       );
-      const payload = await response.json().catch(() => null);
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+      } | null;
 
       if (!response.ok) {
-        throw new Error(
-          (payload as { message?: string } | null)?.message ??
-            "Khong cap nhat duoc booking.",
-        );
+        throw new Error(payload?.message ?? "Không cập nhật được lịch hẹn.");
       }
 
-      setMessage("Da cap nhat trang thai booking.");
+      setMessage("Đã cập nhật trạng thái lịch hẹn.");
       await loadBookings();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Khong cap nhat duoc booking.",
+        error instanceof Error
+          ? error.message
+          : "Không cập nhật được lịch hẹn.",
       );
     } finally {
       setActing(null);
@@ -143,15 +163,19 @@ export function StaffCalendarScreen() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Staff calendar
+              Lịch vận hành
             </p>
-            <h1 className="font-serif text-3xl text-foreground">Lich dat cho staff</h1>
+            <h1 className="font-serif text-3xl text-foreground">Lịch đặt theo thợ</h1>
             <p className="text-sm leading-7 text-text-muted">
-              Bookings o day duoc doc tu cung shared source of truth voi customer flow.
+              Lịch trên màn này dùng chung nguồn dữ liệu với khách hàng, kỹ thuật
+              viên và các màn quản lý nội bộ.
             </p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime: <span className="font-semibold text-primary">{runtimeSource}</span>
+            Nguồn dữ liệu:{" "}
+            <span className="font-semibold text-primary">
+              {formatRuntimeSource(runtimeSource)}
+            </span>
           </div>
         </div>
       </header>
@@ -159,7 +183,7 @@ export function StaffCalendarScreen() {
       <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr_1fr_auto]">
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-foreground">Ngay</span>
+            <span className="text-sm font-medium text-foreground">Ngày</span>
             <input
               type="date"
               value={date}
@@ -169,13 +193,13 @@ export function StaffCalendarScreen() {
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-foreground">Staff</span>
+            <span className="text-sm font-medium text-foreground">Thợ</span>
             <select
               value={staffId}
               onChange={(event) => setStaffId(event.target.value)}
               className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm"
             >
-              <option value="all">Tat ca</option>
+              <option value="all">Tất cả</option>
               {staffOptions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.displayName}
@@ -185,20 +209,20 @@ export function StaffCalendarScreen() {
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-foreground">Trang thai</span>
+            <span className="text-sm font-medium text-foreground">Trạng thái</span>
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value as BookingStatus | "all")}
               className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm"
             >
-              <option value="all">Tat ca</option>
-              <option value="pending">pending</option>
-              <option value="confirmed">confirmed</option>
-              <option value="checked_in">checked_in</option>
-              <option value="completed">completed</option>
-              <option value="cancelled">cancelled</option>
-              <option value="no_show">no_show</option>
-              <option value="late_show">late_show</option>
+              <option value="all">Tất cả</option>
+              <option value="pending">Chờ xác nhận</option>
+              <option value="confirmed">Đã xác nhận</option>
+              <option value="late_show">Trễ lịch</option>
+              <option value="no_show">Vắng mặt</option>
+              <option value="checked_in">Đang làm</option>
+              <option value="completed">Hoàn tất</option>
+              <option value="cancelled">Đã huỷ</option>
             </select>
           </label>
 
@@ -208,7 +232,7 @@ export function StaffCalendarScreen() {
               onClick={() => void loadBookings()}
               className="w-full rounded-full border border-border px-4 py-3 text-sm font-semibold text-text-muted"
             >
-              Lam moi
+              Làm mới
             </button>
           </div>
         </div>
@@ -226,10 +250,10 @@ export function StaffCalendarScreen() {
           </div>
 
           {loading ? (
-            <p className="mt-5 text-sm text-text-muted">Dang tai bookings...</p>
+            <p className="mt-5 text-sm text-text-muted">Đang tải lịch hẹn...</p>
           ) : groupedItems.length === 0 ? (
             <div className="mt-5 rounded-[1.4rem] border border-dashed border-border/80 bg-surface px-5 py-8 text-sm leading-7 text-text-muted">
-              Chua co booking nao trong ngay nay voi bo loc hien tai.
+              Chưa có lịch hẹn nào trong ngày này với bộ lọc hiện tại.
             </div>
           ) : (
             <div className="mt-5 space-y-4">
@@ -239,43 +263,42 @@ export function StaffCalendarScreen() {
                     <h3 className="font-semibold text-primary">{group.label}</h3>
                     <span className="h-px flex-1 bg-border" />
                   </div>
-                  <div className="grid gap-3">
-                    {group.items.map((item) => (
-                      <button
-                        key={item.booking.id}
-                        type="button"
-                        onClick={() => setSelectedBookingId(item.booking.id)}
-                        className={[
-                          "rounded-[1.35rem] border px-5 py-4 text-left transition",
-                          selectedItem?.booking.id === item.booking.id
-                            ? "border-primary bg-primary/6 shadow-[0_12px_24px_rgba(138,90,93,0.12)]"
-                            : "border-border/80 bg-surface hover:border-primary/30",
-                        ].join(" ")}
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-foreground">
-                                {item.booking.startTime} - {item.booking.estimatedEndTime}
-                              </span>
-                              <StatusBadge status={item.booking.status} />
-                            </div>
-                            <p className="text-sm font-medium text-primary">
-                              {item.booking.customerSnapshot.fullName}
-                            </p>
-                            <p className="text-sm leading-6 text-text-muted">
-                              {item.booking.pricingSummary?.serviceDisplayLabel ??
-                                buildServiceLabel(item.booking)}
-                            </p>
-                          </div>
-                          <div className="space-y-1 text-sm text-text-muted md:text-right">
-                            <p>{item.booking.referenceCode}</p>
-                            <p>{formatPaymentMethod(item.booking.paymentSummary?.method)}</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+
+                  {group.activeItems.length > 0 ? (
+                    <div className="grid gap-3">
+                      {group.activeItems.map((item) => (
+                        <AgendaBookingCard
+                          key={item.booking.id}
+                          item={item}
+                          selected={selectedItem?.booking.id === item.booking.id}
+                          onSelect={() => setSelectedBookingId(item.booking.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {group.cancelledItems.length > 0 ? (
+                    <div className="space-y-3 rounded-[1.4rem] border border-[#eadfd8] bg-[#faf6f3] p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-full bg-[#efe5df] px-3 py-1 text-xs font-semibold text-[#8d6962]">
+                          Đã huỷ
+                        </span>
+                        <span className="text-sm text-text-muted">
+                          {group.cancelledItems.length} lịch
+                        </span>
+                      </div>
+                      <div className="grid gap-3">
+                        {group.cancelledItems.map((item) => (
+                          <AgendaBookingCard
+                            key={item.booking.id}
+                            item={item}
+                            selected={selectedItem?.booking.id === item.booking.id}
+                            onSelect={() => setSelectedBookingId(item.booking.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -283,11 +306,11 @@ export function StaffCalendarScreen() {
         </section>
 
         <aside className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
-          <h2 className="font-serif text-2xl text-foreground">Chi tiet booking</h2>
+          <h2 className="font-serif text-2xl text-foreground">Chi tiết lịch hẹn</h2>
 
           {!selectedItem ? (
             <p className="mt-5 text-sm leading-7 text-text-muted">
-              Chon mot booking o agenda ben trai de xem chi tiet va thao tac.
+              Chọn một lịch hẹn ở agenda bên trái để xem chi tiết và thao tác.
             </p>
           ) : (
             <div className="mt-5 space-y-5">
@@ -296,52 +319,66 @@ export function StaffCalendarScreen() {
                   <p className="font-semibold text-primary">
                     {selectedItem.booking.referenceCode}
                   </p>
-                  <StatusBadge status={selectedItem.booking.status} />
+                  <StatusBadge status={selectedItem.effectiveStatus} />
                 </div>
                 <div className="mt-4 grid gap-3 text-sm">
-                  <InfoRow label="Khach hang" value={selectedItem.booking.customerSnapshot.fullName} />
                   <InfoRow
-                    label="So dien thoai"
-                    value={selectedItem.booking.customerSnapshot.phoneDisplay ?? selectedItem.booking.customerSnapshot.phoneE164}
+                    label="Khách hàng"
+                    value={formatDisplayCopy(selectedItem.booking.customerSnapshot.fullName)}
                   />
                   <InfoRow
-                    label="Dich vu"
+                    label="Số điện thoại"
                     value={
-                      selectedItem.booking.pricingSummary?.serviceDisplayLabel ??
-                      buildServiceLabel(selectedItem.booking)
+                      selectedItem.booking.customerSnapshot.phoneDisplay ??
+                      selectedItem.booking.customerSnapshot.phoneE164
                     }
                   />
-                  <InfoRow label="Ngay" value={formatDateLabel(selectedItem.booking.date)} />
                   <InfoRow
-                    label="Khung gio"
+                    label="Dịch vụ"
+                    value={buildServiceLabel(selectedItem.booking)}
+                  />
+                  <InfoRow label="Ngày" value={formatDateLabel(selectedItem.booking.date)} />
+                  <InfoRow
+                    label="Khung giờ"
                     value={`${selectedItem.booking.startTime} - ${selectedItem.booking.estimatedEndTime}`}
                   />
                   <InfoRow
-                    label="Tho"
-                    value={selectedItem.assignedStaffName ?? "Pool / chua chi dinh"}
+                    label="Thợ"
+                    value={selectedItem.assignedStaffName ?? "Pool / chưa chỉ định"}
                   />
                   <InfoRow
-                    label="Thanh toan"
+                    label="Thanh toán"
                     value={formatPaymentMethod(selectedItem.booking.paymentSummary?.method)}
                   />
-                  <InfoRow label="Nguon" value={`${selectedItem.booking.source} / ${selectedItem.booking.channel}`} />
+                  <InfoRow
+                    label="Nguồn"
+                    value={`${selectedItem.booking.source} / ${selectedItem.booking.channel}`}
+                  />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Cap nhat trang thai</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Cập nhật trạng thái
+                </p>
                 <div className="grid gap-2">
-                  {getAvailableActions(selectedItem.booking.status).map((action) => (
-                    <button
-                      key={action}
-                      type="button"
-                      disabled={acting !== null}
-                      onClick={() => void handleAction(action)}
-                      className="rounded-full border border-primary/20 bg-white px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5 disabled:opacity-60"
-                    >
-                      {acting === action ? "Dang xu ly..." : actionLabelMap[action]}
-                    </button>
-                  ))}
+                  {getAvailableActions(selectedItem.booking.status).length === 0 ? (
+                    <div className="rounded-[1.1rem] border border-dashed border-border/80 bg-surface px-4 py-4 text-sm text-text-muted">
+                      Lịch hẹn này không còn thao tác trạng thái phù hợp trên màn này.
+                    </div>
+                  ) : (
+                    getAvailableActions(selectedItem.booking.status).map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={acting !== null}
+                        onClick={() => void handleAction(action)}
+                        className="rounded-full border border-primary/20 bg-white px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5 disabled:opacity-60"
+                      >
+                        {acting === action ? "Đang xử lý..." : actionLabelMap[action]}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -349,6 +386,52 @@ export function StaffCalendarScreen() {
         </aside>
       </div>
     </section>
+  );
+}
+
+function AgendaBookingCard({
+  item,
+  selected,
+  onSelect,
+}: {
+  item: CalendarBookingItem;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const isCancelled = item.effectiveStatus === "cancelled";
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={[
+        "rounded-[1.35rem] border px-5 py-4 text-left transition",
+        isCancelled
+          ? "border-[#eadfd8] bg-[#f7f2ef] text-[#7b6660] hover:border-[#d9c2bb]"
+          : selected
+            ? "border-primary bg-primary/6 shadow-[0_12px_24px_rgba(138,90,93,0.12)]"
+            : "border-border/80 bg-surface hover:border-primary/30",
+      ].join(" ")}
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={isCancelled ? "font-semibold text-[#6e5b56]" : "font-semibold text-foreground"}>
+              {item.booking.startTime} - {item.booking.estimatedEndTime}
+            </span>
+            <StatusBadge status={item.effectiveStatus} />
+          </div>
+          <p className={isCancelled ? "text-sm font-medium text-[#6f5d57]" : "text-sm font-medium text-primary"}>
+            {formatDisplayCopy(item.booking.customerSnapshot.fullName)}
+          </p>
+          <p className="text-sm leading-6 text-text-muted">{buildServiceLabel(item.booking)}</p>
+        </div>
+        <div className="space-y-1 text-sm text-text-muted md:text-right">
+          <p>{item.booking.referenceCode}</p>
+          <p>{formatPaymentMethod(item.booking.paymentSummary?.method)}</p>
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -366,27 +449,19 @@ function StatusBadge({ status }: { status: BookingStatus }) {
     <span
       className={[
         "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]",
-        status === "pending"
-          ? "bg-[#f6ead5] text-[#9c6a26]"
-          : status === "confirmed"
-            ? "bg-[#e3f0fb] text-[#245c8f]"
-            : status === "checked_in"
-              ? "bg-[#e4f5e8] text-[#28753c]"
-              : status === "completed"
-                ? "bg-[#ece8f8] text-[#5f4d8d]"
-                : "bg-[#f4e7e2] text-[#8b5b4d]",
+        getStatusTone(status),
       ].join(" ")}
     >
-      {status}
+      {getStatusLabel(status)}
     </span>
   );
 }
 
 const actionLabelMap: Record<BookingAction, string> = {
-  confirm: "Xac nhan booking",
-  check_in: "Check-in",
-  complete: "Hoan thanh",
-  cancel: "Huy booking",
+  confirm: "Xác nhận lịch hẹn",
+  check_in: "Nhận khách",
+  complete: "Hoàn tất",
+  cancel: "Huỷ lịch hẹn",
 };
 
 function getAvailableActions(status: BookingStatus) {
@@ -396,7 +471,7 @@ function getAvailableActions(status: BookingStatus) {
     actions.push("confirm", "cancel");
   }
 
-  if (status === "confirmed") {
+  if (status === "confirmed" || status === "late_show") {
     actions.push("check_in", "cancel");
   }
 
@@ -404,27 +479,150 @@ function getAvailableActions(status: BookingStatus) {
     actions.push("complete", "cancel");
   }
 
+  if (status === "no_show") {
+    actions.push("cancel");
+  }
+
   return actions;
 }
 
 function buildServiceLabel(booking: Booking) {
-  const effectLabel = booking.effects.filter((effect) => effect !== "none").join(", ");
-  return [booking.setType, booking.nailType, booking.polishStyle, effectLabel]
+  const effectLabel = getEffectLabel(booking.effects);
+  return [
+    getSetTypeLabel(booking.setType),
+    getNailTypeLabel(booking.nailType),
+    getPolishStyleLabel(booking.polishStyle),
+    effectLabel,
+  ]
     .filter(Boolean)
-    .join(" · ");
+    .join(" • ");
 }
 
-function formatPaymentMethod(method?: Booking["paymentSummary"] extends infer T ? any : never) {
+function getStatusLabel(status: BookingStatus) {
+  switch (status) {
+    case "pending":
+      return "Chờ xác nhận";
+    case "confirmed":
+      return "Đã xác nhận";
+    case "late_show":
+      return "Trễ lịch";
+    case "no_show":
+      return "Vắng mặt";
+    case "checked_in":
+      return "Đang làm";
+    case "completed":
+      return "Hoàn tất";
+    case "cancelled":
+      return "Đã huỷ";
+    default:
+      return status;
+  }
+}
+
+function getStatusTone(status: BookingStatus) {
+  switch (status) {
+    case "pending":
+      return "bg-[#f6ead5] text-[#9c6a26]";
+    case "confirmed":
+      return "bg-[#e3f0fb] text-[#245c8f]";
+    case "late_show":
+      return "bg-[#fff1dc] text-[#9a6b10]";
+    case "no_show":
+      return "bg-[#fde8e5] text-[#b04c43]";
+    case "checked_in":
+      return "bg-[#e4f5e8] text-[#28753c]";
+    case "completed":
+      return "bg-[#ece8f8] text-[#5f4d8d]";
+    case "cancelled":
+      return "bg-[#efe5df] text-[#8d6962]";
+    default:
+      return "bg-[#f4e7e2] text-[#8b5b4d]";
+  }
+}
+
+function getSetTypeLabel(setType: Booking["setType"]) {
+  switch (setType) {
+    case "hands":
+      return "Tay";
+    case "feet":
+      return "Chân";
+    case "both":
+      return "Tay và chân";
+    default:
+      return setType;
+  }
+}
+
+function getNailTypeLabel(nailType: Booking["nailType"]) {
+  switch (nailType) {
+    case "natural":
+      return "Móng thật";
+    case "tip":
+      return "Móng úp";
+    case "builder_gel":
+      return "Đắp gel";
+    default:
+      return nailType;
+  }
+}
+
+function getPolishStyleLabel(polishStyle: Booking["polishStyle"]) {
+  switch (polishStyle) {
+    case "gel_solid":
+      return "Sơn trơn gel";
+    case "glitter":
+      return "Sơn nhũ";
+    case "cat_eye":
+      return "Mắt mèo";
+    case "chrome":
+      return "Tráng gương";
+    default:
+      return polishStyle;
+  }
+}
+
+function getEffectLabel(effects: Booking["effects"]) {
+  const labels = effects
+    .filter((effect) => effect !== "none")
+    .map((effect) => {
+      switch (effect) {
+        case "sticker":
+          return "Đính đá";
+        case "design":
+          return "Vẽ mẫu";
+        default:
+          return effect;
+      }
+    });
+
+  return labels.length > 0 ? labels.join(", ") : "";
+}
+
+function formatPaymentMethod(method?: BookingPaymentMethod | null) {
   switch (method) {
     case "bank_transfer":
-      return "Chuyen khoan";
+      return "Chuyển khoản";
     case "local_card":
-      return "The noi dia";
+      return "Thẻ nội địa";
     case "pay_at_salon":
-      return "Thanh toan tai salon";
+      return "Thanh toán tại salon";
     default:
-      return "Chua co";
+      return "Chưa có";
   }
+}
+
+function formatRuntimeSource(source: CalendarApiResponse["source"]) {
+  return source === "database" ? "Cơ sở dữ liệu" : "Bộ nhớ tạm";
+}
+
+function formatDisplayCopy(value: string) {
+  const exactMap: Record<string, string> = {
+    "Nguyen Minh Anh": "Nguyễn Minh Anh",
+    "Tran Vy": "Trần Vy",
+    "Le Tu Anh": "Lê Tú Anh",
+  };
+
+  return exactMap[value] ?? value;
 }
 
 function formatDateLabel(isoDate: string) {

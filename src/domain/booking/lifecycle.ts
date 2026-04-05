@@ -11,7 +11,7 @@ export const VALID_BOOKING_STATUS_TRANSITIONS: Record<
   checked_in: ["completed", "no_show"],
   completed: [],
   cancelled: [],
-  no_show: [],
+  no_show: ["cancelled"],
   late_show: ["checked_in", "no_show", "cancelled"],
 };
 

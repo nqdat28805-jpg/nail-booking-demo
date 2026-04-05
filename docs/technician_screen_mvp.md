@@ -1,5 +1,63 @@
 # Technician Screen MVP
 
+## Technician Route Refinement
+
+### Route refined
+- `/noi-bo/tho`
+
+### Stitch package followed more literally
+- Continued using the newest Stitch package as the primary visual source:
+  - `C:\X\PERSONAL\ki work\ki\stitch_remix_of_remix_of_remix_of_guest_information.zip`
+- Tightened the page to match the lighter mobile Stitch variant more closely:
+  - cleaner top bar
+  - no extra subtitle under the brand area
+  - compact pill filters
+  - compact date/staff controls
+  - alert stack first
+  - lighter timeline list underneath
+  - hidden detail sheet that opens only after tapping a booking
+
+### Compact card behavior
+- Each booking card on the main list now shows only:
+  - status label
+  - time range
+  - customer name
+  - short service summary
+  - one primary action
+- Primary action rule:
+  - upcoming guest: `Nhận khách`
+  - in service: `Hoàn tất`
+  - late / no-show attention state: `Liên hệ khách`
+  - otherwise: `Chi tiết`
+- Extra actions were removed from the compact list and moved into the detail sheet.
+
+### Detail sheet behavior
+- Detail is hidden on initial load.
+- Tapping a booking opens the full bottom sheet on mobile.
+- The detail sheet now carries the expanded fields and secondary actions:
+  - phone
+  - booking code
+  - guest count
+  - set type
+  - nail type
+  - polish style
+  - effects
+  - payment summary
+  - notes
+  - `Nhận khách`
+  - `Hoàn tất`
+  - `Gọi khách`
+  - `Đánh dấu vắng mặt`
+
+### Vietnamese localization cleanup
+- Removed the old subtitle text `Thợ vận hành nhanh`.
+- Converted remaining visible technician copy into proper Vietnamese with diacritics where practical.
+- Replaced visible English/internal-facing labels on this route such as:
+  - `No-show` -> `Vắng mặt`
+  - `Check-in` -> `Nhận khách`
+  - `Đánh dấu no-show` -> `Đánh dấu vắng mặt`
+- Normalized the seeded customer/service/payment note strings at render time on `/noi-bo/tho` so the technician screen no longer surfaces obvious non-diacritic demo text.
+
 ## Route used
 - `/noi-bo/tho`
 

@@ -123,25 +123,33 @@ export class DefaultBookingService implements BookingServiceContract {
 
   async confirmBooking(id: string) {
     return this.transitionStatus(id, "confirmed", {
-      confirmedAt: this.getNowIso(),
+      timestamps: {
+        confirmedAt: this.getNowIso(),
+      },
     });
   }
 
   async checkInBooking(id: string) {
     return this.transitionStatus(id, "checked_in", {
-      checkedInAt: this.getNowIso(),
+      timestamps: {
+        checkedInAt: this.getNowIso(),
+      },
     });
   }
 
   async completeBooking(id: string, actualCompletedAt: string) {
     return this.transitionStatus(id, "completed", {
-      actualCompletedAt,
+      timestamps: {
+        actualCompletedAt,
+      },
     });
   }
 
   async cancelBooking(id: string, reason: string) {
     return this.transitionStatus(id, "cancelled", {
-      cancelledAt: this.getNowIso(),
+      timestamps: {
+        cancelledAt: this.getNowIso(),
+      },
       notes: reason,
     });
   }
@@ -198,7 +206,9 @@ export class DefaultBookingService implements BookingServiceContract {
   private async transitionStatus(
     id: string,
     nextStatus: BookingStatus,
-    timestampPatch: Partial<Booking["timestamps"]> & Partial<Booking>,
+    timestampPatch: Partial<Omit<Booking, "timestamps">> & {
+      timestamps?: Partial<Booking["timestamps"]>;
+    },
   ) {
     const booking = await this.requireBooking(id);
 
