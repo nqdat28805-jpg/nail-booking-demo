@@ -33,6 +33,7 @@ export interface CreateBookingInput {
   pricingSummary?: BookingPricingSummary | null;
   paymentSummary?: BookingPaymentSummary | null;
   finalAvailabilityQuery: AvailabilityQuery;
+  activeHoldSlot?: string | null;
 }
 
 export interface CustomerSearchQuery {
@@ -58,6 +59,7 @@ export interface BookingServiceContract {
   checkInBooking(id: string): Promise<Booking>;
   completeBooking(id: string, actualCompletedAt: string): Promise<Booking>;
   cancelBooking(id: string, reason: string): Promise<Booking>;
+  noShowBooking(id: string, reason?: string): Promise<Booking>;
   rescheduleBooking(
     id: string,
     newDate: string,
@@ -103,6 +105,11 @@ export const unimplementedBookingService: BookingServiceContract = {
   async cancelBooking() {
     throw new Error(
       "cancelBooking is a shared backend contract stub. Implement it against the booking service.",
+    );
+  },
+  async noShowBooking() {
+    throw new Error(
+      "noShowBooking is a shared backend contract stub. Implement it against the booking service.",
     );
   },
   async rescheduleBooking() {

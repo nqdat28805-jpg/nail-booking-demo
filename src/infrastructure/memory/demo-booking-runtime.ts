@@ -31,6 +31,8 @@ export interface DemoBookingRuntimeConfig {
   schedules: StaffWorkingSchedule[];
   blockOffs: BlockOff[];
   durationRules: ServiceDurationRule[];
+  bookings?: Booking[];
+  temporaryHolds?: TemporaryHold[];
   businessHours: {
     openTime: string;
     closeTime: string;
@@ -51,6 +53,8 @@ export interface DemoBookingRuntimeConfig {
 
 export function createDemoBookingRuntime(config: DemoBookingRuntimeConfig) {
   const bookingRepository = new InMemoryBookingRepository({
+    bookings: config.bookings,
+    temporaryHolds: config.temporaryHolds,
     seedBookingsByStaffAndDate: config.seedBookingsByStaffAndDate,
     seedTemporaryHoldsByStaffAndDate: config.seedTemporaryHoldsByStaffAndDate,
   });

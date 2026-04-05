@@ -114,6 +114,141 @@ export const DEMO_DURATION_RULES: ServiceDurationRule[] = (
   ),
 );
 
+export function getTodayOperationsSeedBookings(now = new Date()): Booking[] {
+  const zoned = getBangkokDateTime(now);
+  const today = zoned.date;
+  const anchorMinutes = zoned.totalMinutes;
+  const lateStart = clampStart(anchorMinutes - 20, 75);
+  const noShowStart = clampStart(anchorMinutes - 38, 60);
+  const activeStart = clampStart(anchorMinutes - 55, 90);
+  const upcomingStart = clampStart(anchorMinutes + 35, 90);
+
+  return [
+    createOperationalBooking({
+      id: `ops-booking-active-${today}`,
+      referenceCode: `NL-${today.replaceAll("-", "")}-9101`,
+      staffId: "mia",
+      fullName: "Lê Phương Thảo",
+      phoneDisplay: "090 1234 567",
+      phoneE164: "+84901234567",
+      date: today,
+      startMinutes: activeStart,
+      durationMinutes: 90,
+      guestCount: 1,
+      setType: "hands",
+      nailType: "natural",
+      polishStyle: "glitter",
+      effects: ["design"],
+      status: "checked_in",
+      paymentSummary: {
+        method: "bank_transfer",
+        status: "awaiting_bank_transfer",
+        detailLabel: "Dat coc",
+        detailValue: "100.000d",
+      },
+      pricingSummary: {
+        shopId: "19nail-studio",
+        priceListId: "19nail-main-menu",
+        serviceDisplayLabel: "Son gel mau dinh da va cham soc mong tay",
+        quotedTotalLabel: "390.000d",
+        currency: "VND",
+      },
+      notes: "Khach quen, uu tien xu ly nhanh.",
+    }),
+    createOperationalBooking({
+      id: `ops-booking-upcoming-${today}`,
+      referenceCode: `NL-${today.replaceAll("-", "")}-9102`,
+      staffId: "bella",
+      fullName: "Nguyen Minh Anh",
+      phoneDisplay: "091 8888 999",
+      phoneE164: "+84918888999",
+      date: today,
+      startMinutes: upcomingStart,
+      durationMinutes: 90,
+      guestCount: 1,
+      setType: "hands",
+      nailType: "tip",
+      polishStyle: "gel_solid",
+      effects: ["design"],
+      status: "pending",
+      paymentSummary: {
+        method: "pay_at_salon",
+        status: "pay_at_salon",
+      },
+      pricingSummary: {
+        shopId: "19nail-studio",
+        priceListId: "19nail-main-menu",
+        serviceDisplayLabel: "Dap mong gel va French tip",
+        quotedTotalLabel: "420.000d",
+        currency: "VND",
+      },
+      notes: "Khach moi, can xac nhan mau French tip.",
+    }),
+    createOperationalBooking({
+      id: `ops-booking-late-${today}`,
+      referenceCode: `NL-${today.replaceAll("-", "")}-9103`,
+      staffId: "elena",
+      fullName: "Tran Vy",
+      phoneDisplay: "093 3334 555",
+      phoneE164: "+84933334555",
+      date: today,
+      startMinutes: lateStart,
+      durationMinutes: 75,
+      guestCount: 1,
+      setType: "hands",
+      nailType: "natural",
+      polishStyle: "cat_eye",
+      effects: ["none"],
+      status: "confirmed",
+      paymentSummary: {
+        method: "local_card",
+        status: "card_details_captured",
+        detailLabel: "The noi dia",
+        detailValue: "Da nhap thong tin",
+      },
+      pricingSummary: {
+        shopId: "19nail-studio",
+        priceListId: "19nail-main-menu",
+        serviceDisplayLabel: "Thao mong cu va cham soc mong chuyen sau",
+        quotedTotalLabel: "280.000d",
+        currency: "VND",
+      },
+      notes: "Theo doi sat vi da tre hon 15 phut.",
+    }),
+    createOperationalBooking({
+      id: `ops-booking-no-show-${today}`,
+      referenceCode: `NL-${today.replaceAll("-", "")}-9104`,
+      staffId: "bella",
+      fullName: "Le Tu Anh",
+      phoneDisplay: "090 7722 991",
+      phoneE164: "+84907722991",
+      date: today,
+      startMinutes: noShowStart,
+      durationMinutes: 60,
+      guestCount: 2,
+      setType: "both",
+      nailType: "builder_gel",
+      polishStyle: "chrome",
+      effects: ["sticker"],
+      status: "confirmed",
+      paymentSummary: {
+        method: "bank_transfer",
+        status: "awaiting_bank_transfer",
+        detailLabel: "Thanh toan",
+        detailValue: "Cho chuyen khoan",
+      },
+      pricingSummary: {
+        shopId: "19nail-studio",
+        priceListId: "19nail-main-menu",
+        serviceDisplayLabel: "Cham soc da chuyen sau va trang guong",
+        quotedTotalLabel: "650.000d",
+        currency: "VND",
+      },
+      notes: "Neu qua 30 phut khong check-in thi danh dau no-show.",
+    }),
+  ];
+}
+
 export function getDemoSeededBookings(staffId: string, iso: string) {
   const seed = createSeed(`${iso}-${staffId}-booked`);
   const intervals: { startMinutes: number; durationMinutes: number }[] = [];
@@ -332,6 +467,79 @@ function createMockStoredBooking(
   };
 }
 
+function createOperationalBooking(input: {
+  id: string;
+  referenceCode: string;
+  staffId: string;
+  fullName: string;
+  phoneDisplay: string;
+  phoneE164: string;
+  date: string;
+  startMinutes: number;
+  durationMinutes: number;
+  guestCount: number;
+  setType: SetType;
+  nailType: NailType;
+  polishStyle: PolishStyle;
+  effects: Booking["effects"];
+  status: Booking["status"];
+  paymentSummary: Booking["paymentSummary"];
+  pricingSummary: Booking["pricingSummary"];
+  notes: string;
+}) {
+  const startTime = convertMinutesToTime(input.startMinutes);
+  const estimatedEndTime = convertMinutesToTime(
+    input.startMinutes + input.durationMinutes,
+  );
+
+  return {
+    id: input.id,
+    referenceCode: input.referenceCode,
+    shopId: "19nail-studio",
+    customerId: null,
+    customerSnapshot: {
+      fullName: input.fullName,
+      phoneE164: input.phoneE164,
+      phoneDisplay: input.phoneDisplay,
+    },
+    anonymousSessionId: null,
+    branchId: DEMO_BRANCH_ID,
+    date: input.date,
+    startTime,
+    estimatedEndTime,
+    durationMinutes: input.durationMinutes,
+    guestCount: input.guestCount,
+    setType: input.setType,
+    nailType: input.nailType,
+    polishStyle: input.polishStyle,
+    effects: input.effects,
+    notes: input.notes,
+    source: "website",
+    channel: "web_self_booking",
+    status: input.status,
+    assignedStaffMode: "specific_staff",
+    assignedStaffId: input.staffId,
+    pricingSummary: input.pricingSummary,
+    paymentSummary: input.paymentSummary,
+    timestamps: {
+      createdAt: `${input.date}T08:00:00+07:00`,
+      updatedAt: `${input.date}T08:00:00+07:00`,
+      confirmedAt:
+        input.status === "pending" ? null : `${input.date}T08:05:00+07:00`,
+      checkedInAt:
+        input.status === "checked_in" ? `${input.date}T${startTime}:00+07:00` : null,
+      actualCompletedAt: null,
+      cancelledAt: null,
+    },
+    auditMetadata: {
+      createdByActorType: "system",
+      createdByActorId: "ops-seed",
+      updatedByActorType: "system",
+      updatedByActorId: "ops-seed",
+    },
+  } satisfies Booking;
+}
+
 function createSeed(value: string) {
   return value.split("").reduce((accumulator, currentChar) => {
     return accumulator + currentChar.charCodeAt(0);
@@ -343,4 +551,34 @@ function convertMinutesToTime(totalMinutes: number) {
   const minutes = totalMinutes % 60;
 
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function clampStart(startMinutes: number, durationMinutes: number) {
+  return Math.max(
+    SALON_OPEN_MINUTES,
+    Math.min(startMinutes, 21 * 60 - durationMinutes - 15),
+  );
+}
+
+function getBangkokDateTime(now: Date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value ?? "2026";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+
+  return {
+    date: `${year}-${month}-${day}`,
+    totalMinutes: hour * 60 + minute,
+  };
 }

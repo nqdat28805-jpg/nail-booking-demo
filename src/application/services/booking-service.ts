@@ -40,8 +40,15 @@ export class DefaultBookingService implements BookingServiceContract {
     const selectedSlot = availability.slots.find(
       (slot) => slot.startTime === input.startTime,
     );
+    const selectedSlotMatchesActiveHold =
+      selectedSlot?.state === "held" &&
+      input.activeHoldSlot != null &&
+      input.activeHoldSlot === input.startTime;
 
-    if (!selectedSlot || selectedSlot.state !== "available") {
+    if (
+      !selectedSlot ||
+      (selectedSlot.state !== "available" && !selectedSlotMatchesActiveHold)
+    ) {
       throw new Error(
         "createBooking requires a final availability recheck before storing the booking.",
       );
@@ -136,6 +143,12 @@ export class DefaultBookingService implements BookingServiceContract {
     return this.transitionStatus(id, "cancelled", {
       cancelledAt: this.getNowIso(),
       notes: reason,
+    });
+  }
+
+  async noShowBooking(id: string, reason?: string) {
+    return this.transitionStatus(id, "no_show", {
+      notes: reason ?? null,
     });
   }
 

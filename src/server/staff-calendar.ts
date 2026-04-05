@@ -6,7 +6,8 @@ export type InternalCalendarAction =
   | "confirm"
   | "check_in"
   | "complete"
-  | "cancel";
+  | "cancel"
+  | "no_show";
 
 export async function listInternalCalendarBookings(input: {
   date: string;
@@ -63,11 +64,19 @@ export async function applyInternalBookingAction(input: {
   reason?: string | null;
 }) {
   const runtime = await getSharedBookingRuntime();
+  const booking = await runtime.repositories.bookingRepository.findById(input.bookingId);
+
+  if (!booking) {
+    throw new Error(`Booking ${input.bookingId} was not found.`);
+  }
 
   switch (input.action) {
     case "confirm":
       return runtime.services.bookingService.confirmBooking(input.bookingId);
     case "check_in":
+      if (booking.status === "pending") {
+        await runtime.services.bookingService.confirmBooking(input.bookingId);
+      }
       return runtime.services.bookingService.checkInBooking(input.bookingId);
     case "complete":
       return runtime.services.bookingService.completeBooking(
@@ -78,6 +87,14 @@ export async function applyInternalBookingAction(input: {
       return runtime.services.bookingService.cancelBooking(
         input.bookingId,
         input.reason?.trim() || "Cancelled from staff calendar MVP.",
+      );
+    case "no_show":
+      if (booking.status === "pending") {
+        await runtime.services.bookingService.confirmBooking(input.bookingId);
+      }
+      return runtime.services.bookingService.noShowBooking(
+        input.bookingId,
+        input.reason?.trim() || "Marked as no-show from technician screen.",
       );
     default:
       throw new Error("Unsupported booking action.");

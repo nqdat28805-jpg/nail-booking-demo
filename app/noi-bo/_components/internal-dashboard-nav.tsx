@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/noi-bo", label: "Tong quan" },
+  { href: "/noi-bo/tho", label: "Tho hom nay" },
   { href: "/noi-bo/lich", label: "Lich dat" },
   { href: "/noi-bo/nhan-su", label: "Nhan su" },
   { href: "/noi-bo/lich-lam-viec", label: "Lich lam viec" },

@@ -13,6 +13,7 @@ import {
   DEMO_STAFF_SCHEDULES,
   getDemoSeededBookings,
   getDemoSeededTemporaryHolds,
+  getTodayOperationsSeedBookings,
 } from "@/src/server/demo/demo-seed";
 import {
   NullAuditLogRepository,
@@ -138,6 +139,7 @@ async function createSharedBookingRuntime(): Promise<SharedBookingRuntime> {
     schedules: DEMO_STAFF_SCHEDULES,
     blockOffs: DEMO_BLOCK_OFFS,
     durationRules: DEMO_DURATION_RULES,
+    bookings: getTodayOperationsSeedBookings(),
     businessHours: {
       openTime: "09:00",
       closeTime: "21:00",

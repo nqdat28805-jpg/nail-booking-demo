@@ -52,6 +52,11 @@ export default async function InternalDashboardHomePage() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {[
               {
+                href: "/noi-bo/tho",
+                title: "Tho hom nay",
+                body: "Man quick-ops cho technician: can xu ly ngay, check-in, hoan thanh va no-show.",
+              },
+              {
                 href: "/noi-bo/lich",
                 title: "Lich dat",
                 body: "Xem agenda theo ngay, loc booking, mo chi tiet va cap nhat trang thai.",

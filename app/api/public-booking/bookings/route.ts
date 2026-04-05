@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         maskedCardNumber: guestDraft.paymentDetails?.cardNumber ?? null,
       }),
       finalAvailabilityQuery: bookingDraft.availabilityQuery,
+      activeHoldSlot: bookingDraft.holdSlot ?? null,
     });
 
     return NextResponse.json({

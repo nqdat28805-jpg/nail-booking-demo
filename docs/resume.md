@@ -1,5 +1,121 @@
 # Resume
 
+## Technician Screen Rebuild + Regression Repair
+- Regressions found:
+  - the local app was being checked against a stale broken server process, which caused partial interactivity/hydration failures on customer and internal routes
+  - Step 3 booking confirmation could fail during the final shared availability recheck because the active in-session hold was not being honored in the shared create-booking path
+  - the technician route still inherited the manager shell structure, so the page composition did not follow the supplied Stitch package closely enough
+- Regressions fixed:
+  - restarted verification on a clean local server run and rechecked the public booking flow plus internal routes
+  - updated the shared booking create path so the selected active hold slot can still pass the final recheck before persisting the booking
+  - split the technician route into its own shell path so the Stitch-based layout is no longer constrained by the manager sidebar shell
+- Files changed in this repair pass:
+  - `app/api/public-booking/bookings/route.ts`
+  - `app/noi-bo/layout.tsx`
+  - `app/noi-bo/tho/page.tsx`
+  - `app/noi-bo/_components/internal-dashboard-shell.tsx`
+  - `app/noi-bo/_components/technician-ops-screen.tsx`
+  - `src/domain/booking/contracts.ts`
+  - `src/application/services/booking-service.ts`
+  - `docs/technician_screen_mvp.md`
+  - `docs/resume.md`
+- Route added or repaired:
+  - repaired `/noi-bo/tho`
+- Shared backend paths used:
+  - customer create booking: `POST /api/public-booking/bookings`
+  - technician read: `GET /api/internal/bookings`
+  - technician write: `PATCH /api/internal/bookings/:id/status`
+  - runtime selector: `getSharedBookingRuntime()`
+  - shared service: `DefaultBookingService`
+- Manager/internal screens preserved:
+  - `/noi-bo`
+  - `/noi-bo/lich`
+  - `/noi-bo/nhan-su`
+  - `/noi-bo/lich-lam-viec`
+  - `/noi-bo/block-off`
+  - `/noi-bo/cau-hinh`
+- Stitch package used for the rebuild:
+  - `C:\X\PERSONAL\ki work\ki\stitch_remix_of_remix_of_remix_of_guest_information.zip`
+- Verification completed in this repair pass:
+  - `/`
+  - `/dat-lich`
+  - `/dat-lich/thong-tin`
+  - `/dat-lich/xac-nhan`
+  - `/noi-bo`
+  - `/noi-bo/lich`
+  - `/noi-bo/nhan-su`
+  - `/noi-bo/lich-lam-viec`
+  - `/noi-bo/block-off`
+  - `/noi-bo/cau-hinh`
+  - `/noi-bo/tho`
+  - confirmed customer Step 3 can create a booking through the shared runtime and continue to Step 4
+  - confirmed technician actions still use the shared internal booking status API
+  - confirmed manager/setup routes remained intact
+
+## Technician Screen MVP
+- Files changed:
+  - `app/noi-bo/tho/page.tsx`
+  - `app/noi-bo/_components/technician-ops-screen.tsx`
+  - `app/noi-bo/_components/internal-dashboard-nav.tsx`
+  - `app/noi-bo/page.tsx`
+  - `src/domain/booking/contracts.ts`
+  - `src/application/services/booking-service.ts`
+  - `src/server/staff-calendar.ts`
+  - `src/infrastructure/memory/demo-booking-runtime.ts`
+  - `src/server/demo/demo-seed.ts`
+  - `src/server/runtime/shared-booking-runtime.ts`
+  - `docs/technician_screen_mvp.md`
+  - `docs/resume.md`
+- Route added:
+  - `/noi-bo/tho`
+- Stitch source used:
+  - `stitch_remix_of_remix_of_remix_of_guest_information.zip`
+  - technician layout references:
+    - `l_ch_h_m_nay_giao_di_n_th_c_p_nh_t_n_i_dung_m_u_s_c`
+    - `c_nh_b_o_late_show_no_show`
+    - `chi_ti_t_c_nh_b_o_desktop`
+- Backend/shared-data actions used:
+  - read: `GET /api/internal/bookings`
+  - write: `PATCH /api/internal/bookings/:id/status`
+  - shared runtime: `getSharedBookingRuntime()`
+  - shared service: `DefaultBookingService`
+  - shared booking contract now includes `noShowBooking(...)`
+- Technician capabilities added:
+  - compact today-first technician screen
+  - `Cần xử lý ngay` cluster for late-show / no-show risk
+  - quick actions on-card:
+    - check-in
+    - hoàn thành
+    - đánh dấu no-show
+    - gọi khách
+    - xem chi tiết
+  - detail panel with customer, service, timing, payment, notes, and status
+- How manager screens were preserved:
+  - existing manager/admin routes remained intact:
+    - `/noi-bo`
+    - `/noi-bo/lich`
+    - `/noi-bo/nhan-su`
+    - `/noi-bo/lich-lam-viec`
+    - `/noi-bo/block-off`
+    - `/noi-bo/cau-hinh`
+  - only added a new navigation entry and a new technician route
+- Shared data/runtime behavior added:
+  - `memory_fallback` runtime now seeds today's operational bookings so the technician flow is usable immediately
+  - technician quick actions mutate the same booking entity used by customer flow and manager calendar
+  - internal quick `check_in` / `no_show` now auto-confirm pending web bookings before moving to the next lifecycle state
+- Verification completed:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - `/`, `/dat-lich`, `/noi-bo`, `/noi-bo/lich`, and `/noi-bo/tho` return `200`
+  - verified shared bookings for today load on `GET /api/internal/bookings`
+  - verified `check_in`, `complete`, and `no_show` actions on seeded technician bookings
+- What still remains for future polish:
+  - technician screen still reads through the generic internal bookings API rather than a technician-specific read model endpoint
+  - local run is still on `memory_fallback`
+  - internal auth is still missing
+  - `TEMP_HOLD` persistence is still missing
+  - shared status timestamp patching can be cleaned up in a future prompt
+
 ## Staff Calendar MVP
 - Files changed:
   - `app/api/internal/bookings/route.ts`
