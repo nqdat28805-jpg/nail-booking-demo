@@ -1,5 +1,11 @@
 # Resume
 
+## Staff/internal frontend text cleanup
+- Scope kept to internal `/noi-bo` frontend text and presentational blocks only.
+- Removed the red-circled informational blocks from the internal shell and dashboard, including the `NỘI BỘ DEMO` badge, header helper subtitles, runtime info boxes, and the dashboard-only overview/explanatory cards.
+- Translated internal navigation labels and internal management screen copy into proper Vietnamese with diacritics.
+- Backend calls, shared runtime selection, repositories, APIs, state transitions, and customer routes were left untouched.
+
 ## /noi-bo/lich auto-cancel + cancelled bookings
 - Scope kept to `/noi-bo/lich` and the minimum shared status/data wiring needed for that page.
 - Files changed:

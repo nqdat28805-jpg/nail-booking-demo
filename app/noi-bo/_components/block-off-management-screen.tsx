@@ -34,7 +34,7 @@ const DEFAULT_FORM: BlockOffFormState = {
 export function BlockOffManagementScreen() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [items, setItems] = useState<BlockOff[]>([]);
-  const [runtimeSource, setRuntimeSource] =
+  const [, setRuntimeSource] =
     useState<BlockOffApiResponse["source"]>("memory_fallback");
   const [form, setForm] = useState<BlockOffFormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export function BlockOffManagementScreen() {
       setItems(payload.items);
       setRuntimeSource(payload.source);
     } catch {
-      setMessage("Không tải được block-off.");
+      setMessage("Không tải được khóa lịch.");
     } finally {
       setLoading(false);
     }
@@ -88,14 +88,14 @@ export function BlockOffManagementScreen() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.message ?? "Không tạo được block-off.");
+        throw new Error(payload.message ?? "Không tạo được khóa lịch.");
       }
 
       setForm(DEFAULT_FORM);
-      setMessage("Đã tạo block-off mới.");
+      setMessage("Đã tạo khóa lịch mới.");
       await loadBlockOffs();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không tạo được block-off.");
+      setMessage(error instanceof Error ? error.message : "Không tạo được khóa lịch.");
     } finally {
       setSaving(false);
     }
@@ -111,33 +111,20 @@ export function BlockOffManagementScreen() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.message ?? "Không xóa được block-off.");
+        throw new Error(payload.message ?? "Không xóa được khóa lịch.");
       }
 
-      setMessage("Đã xóa block-off.");
+      setMessage("Đã xóa khóa lịch.");
       await loadBlockOffs();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không xóa được block-off.");
+      setMessage(error instanceof Error ? error.message : "Không xóa được khóa lịch.");
     }
   }
 
   return (
     <section className="space-y-6">
       <header className="rounded-[2rem] border border-border/80 bg-white/88 p-6 shadow-[0_18px_36px_rgba(37,28,28,0.06)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Block-off
-            </p>
-            <h1 className="font-serif text-3xl text-foreground">Quản lý thời gian khóa</h1>
-            <p className="text-sm leading-7 text-text-muted">
-              Block-off salon-wide hoặc theo staff sẽ phản ánh trực tiếp sang customer availability.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime: <span className="font-semibold text-primary">{runtimeSource}</span>
-          </div>
-        </div>
+        <h1 className="font-serif text-3xl text-foreground">Quản lý khóa lịch</h1>
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
@@ -145,7 +132,7 @@ export function BlockOffManagementScreen() {
           onSubmit={handleCreate}
           className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]"
         >
-          <h2 className="font-serif text-2xl text-foreground">Tạo block-off</h2>
+          <h2 className="font-serif text-2xl text-foreground">Tạo khóa lịch</h2>
           <div className="mt-5 space-y-4">
             <label className="block space-y-2">
               <span className="text-sm font-medium text-foreground">Phạm vi</span>
@@ -159,8 +146,8 @@ export function BlockOffManagementScreen() {
                 }
                 className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm"
               >
-                <option value="branch">Salon-wide</option>
-                <option value="staff">Theo staff</option>
+                <option value="branch">Toàn salon</option>
+                <option value="staff">Theo thợ</option>
               </select>
             </label>
 
@@ -175,7 +162,7 @@ export function BlockOffManagementScreen() {
                   className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm"
                   required
                 >
-                  <option value="">Chọn staff</option>
+                  <option value="">Chọn thợ</option>
                   {staff.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.displayName}
@@ -244,7 +231,7 @@ export function BlockOffManagementScreen() {
             disabled={saving}
             className="mt-6 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
           >
-            {saving ? "Đang lưu..." : "Tạo block-off"}
+            {saving ? "Đang lưu..." : "Tạo khóa lịch"}
           </button>
 
           {message ? (
@@ -254,7 +241,7 @@ export function BlockOffManagementScreen() {
 
         <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-2xl text-foreground">Block-off hiện có</h2>
+            <h2 className="font-serif text-2xl text-foreground">Khóa lịch hiện có</h2>
             <button
               type="button"
               onClick={() => void loadBlockOffs()}
@@ -269,7 +256,7 @@ export function BlockOffManagementScreen() {
           ) : (
             <div className="mt-5 space-y-3">
               {items.length === 0 ? (
-                <p className="text-sm text-text-muted">Chưa có block-off nào.</p>
+                <p className="text-sm text-text-muted">Chưa có khóa lịch nào.</p>
               ) : (
                 items.map((item) => (
                   <article
@@ -279,7 +266,7 @@ export function BlockOffManagementScreen() {
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-primary">
-                          {item.scope === "staff" ? "Theo staff" : "Salon-wide"}
+                          {item.scope === "staff" ? "Theo thợ" : "Toàn salon"}
                         </p>
                         {item.staffId ? (
                           <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-text-muted">

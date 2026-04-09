@@ -27,7 +27,7 @@ const DEFAULT_FORM: StaffFormState = {
 
 export function StaffManagementScreen() {
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [runtimeSource, setRuntimeSource] =
+  const [, setRuntimeSource] =
     useState<StaffApiResponse["source"]>("memory_fallback");
   const [form, setForm] = useState<StaffFormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(true);
@@ -126,20 +126,7 @@ export function StaffManagementScreen() {
   return (
     <section className="space-y-6">
       <header className="rounded-[2rem] border border-border/80 bg-white/88 p-6 shadow-[0_18px_36px_rgba(37,28,28,0.06)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Staff setup
-            </p>
-            <h1 className="font-serif text-3xl text-foreground">Quản lý nhân sự</h1>
-            <p className="text-sm leading-7 text-text-muted">
-              Dữ liệu ở đây cấp trực tiếp cho danh sách thợ và availability của customer flow.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime: <span className="font-semibold text-primary">{runtimeSource}</span>
-          </div>
-        </div>
+        <h1 className="font-serif text-3xl text-foreground">Quản lý nhân sự</h1>
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -194,7 +181,7 @@ export function StaffManagementScreen() {
                   setForm((current) => ({ ...current, active: event.target.checked }))
                 }
               />
-              Cho hiển thị và tham gia availability
+              Cho hiển thị và tham gia lịch đặt
             </label>
           </div>
 

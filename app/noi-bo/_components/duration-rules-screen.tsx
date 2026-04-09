@@ -10,7 +10,7 @@ type DurationRulesApiResponse = {
 
 export function DurationRulesScreen() {
   const [rules, setRules] = useState<ServiceDurationRule[]>([]);
-  const [runtimeSource, setRuntimeSource] =
+  const [, setRuntimeSource] =
     useState<DurationRulesApiResponse["source"]>("memory_fallback");
   const [loading, setLoading] = useState(true);
   const [savingRuleId, setSavingRuleId] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function DurationRulesScreen() {
       setRules(payload.items);
       setRuntimeSource(payload.source);
     } catch {
-      setMessage("Không tải được duration rules.");
+      setMessage("Không tải được quy tắc thời lượng.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export function DurationRulesScreen() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.message ?? "Không cập nhật được duration rule.");
+        throw new Error(payload.message ?? "Không cập nhật được quy tắc thời lượng.");
       }
 
       setMessage(`Đã cập nhật ${rule.code}.`);
@@ -67,7 +67,7 @@ export function DurationRulesScreen() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Không cập nhật được duration rule.",
+          : "Không cập nhật được quy tắc thời lượng.",
       );
     } finally {
       setSavingRuleId(null);
@@ -77,25 +77,12 @@ export function DurationRulesScreen() {
   return (
     <section className="space-y-6">
       <header className="rounded-[2rem] border border-border/80 bg-white/88 p-6 shadow-[0_18px_36px_rgba(37,28,28,0.06)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Duration config
-            </p>
-            <h1 className="font-serif text-3xl text-foreground">Cấu hình thời lượng</h1>
-            <p className="text-sm leading-7 text-text-muted">
-              Đây là lớp config tối thiểu để estimateDuration và availability dùng cùng rule path.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime: <span className="font-semibold text-primary">{runtimeSource}</span>
-          </div>
-        </div>
+        <h1 className="font-serif text-3xl text-foreground">Cấu hình thời lượng</h1>
       </header>
 
       <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
         <div className="flex items-center justify-between">
-          <h2 className="font-serif text-2xl text-foreground">Service duration rules</h2>
+          <h2 className="font-serif text-2xl text-foreground">Quy tắc thời lượng dịch vụ</h2>
           <button
             type="button"
             onClick={() => void loadRules()}
@@ -132,14 +119,14 @@ export function DurationRulesScreen() {
                     disabled={savingRuleId === rule.id}
                     className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
-                    {savingRuleId === rule.id ? "Đang lưu..." : "Lưu rule"}
+                    {savingRuleId === rule.id ? "Đang lưu..." : "Lưu"}
                   </button>
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                   <label className="block space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                      Base duration
+                      Thời lượng gốc
                     </span>
                     <input
                       value={rule.baseDurationMinutes}
@@ -162,7 +149,7 @@ export function DurationRulesScreen() {
 
                   <label className="block space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                      Round block
+                      Làm tròn lịch
                     </span>
                     <input
                       value={rule.blockRoundToMinutes}
@@ -185,7 +172,7 @@ export function DurationRulesScreen() {
 
                   <label className="block space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                      Guest strategy
+                      Xử lý số khách
                     </span>
                     <select
                       value={rule.guestCountStrategy}
@@ -195,7 +182,8 @@ export function DurationRulesScreen() {
                             itemIndex === index
                               ? {
                                   ...item,
-                                  guestCountStrategy: event.target.value as ServiceDurationRule["guestCountStrategy"],
+                                  guestCountStrategy:
+                                    event.target.value as ServiceDurationRule["guestCountStrategy"],
                                 }
                               : item,
                           ),
@@ -203,14 +191,14 @@ export function DurationRulesScreen() {
                       }
                       className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
                     >
-                      <option value="sequential">sequential</option>
-                      <option value="parallel">parallel</option>
+                      <option value="sequential">Tuần tự</option>
+                      <option value="parallel">Song song</option>
                     </select>
                   </label>
 
                   <label className="block space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                      Multiplier
+                      Hệ số
                     </span>
                     <input
                       value={rule.guestCountMultiplier}

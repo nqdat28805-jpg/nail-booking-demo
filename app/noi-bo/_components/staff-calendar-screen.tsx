@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { Booking, BookingPaymentMethod, BookingStatus } from "@/src/domain/booking/types";
@@ -160,25 +160,8 @@ export function StaffCalendarScreen() {
   return (
     <section className="space-y-6">
       <header className="rounded-[2rem] border border-border/80 bg-white/88 p-6 shadow-[0_18px_36px_rgba(37,28,28,0.06)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Lịch vận hành
-            </p>
-            <h1 className="font-serif text-3xl text-foreground">Lịch đặt theo thợ</h1>
-            <p className="text-sm leading-7 text-text-muted">
-              Lịch trên màn này dùng chung nguồn dữ liệu với khách hàng, kỹ thuật
-              viên và các màn quản lý nội bộ.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Nguồn dữ liệu:{" "}
-            <span className="font-semibold text-primary">
-              {formatRuntimeSource(runtimeSource)}
-            </span>
-          </div>
-        </div>
-      </header>
+  <h1 className="font-serif text-3xl text-foreground">Lịch đặt theo thợ</h1>
+</header>
 
       <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr_1fr_auto]">
@@ -245,7 +228,7 @@ export function StaffCalendarScreen() {
       <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
         <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-2xl text-foreground">Agenda theo staff</h2>
+            <h2 className="font-serif text-2xl text-foreground">Lịch theo thợ</h2>
             <span className="text-sm text-text-muted">{formatDateLabel(date)}</span>
           </div>
 
@@ -641,3 +624,4 @@ function toIsoDate(date: Date) {
     "0",
   )}-${String(date.getDate()).padStart(2, "0")}`;
 }
+

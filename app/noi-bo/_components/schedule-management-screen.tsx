@@ -28,13 +28,13 @@ type EditableScheduleRow = {
 };
 
 const DAY_LABELS = [
-  "Chu nhat",
-  "Thu hai",
-  "Thu ba",
-  "Thu tu",
-  "Thu nam",
-  "Thu sau",
-  "Thu bay",
+  "Chủ nhật",
+  "Thứ hai",
+  "Thứ ba",
+  "Thứ tư",
+  "Thứ năm",
+  "Thứ sáu",
+  "Thứ bảy",
 ];
 
 export function ScheduleManagementScreen() {
@@ -80,7 +80,7 @@ export function ScheduleManagementScreen() {
       setRuntimeSource(payload.source);
       setSelectedStaffId((current) => current || payload.items[0]?.id || "");
     } catch {
-      setMessage("Khong tai duoc danh sach nhan su.");
+      setMessage("Không tải được danh sách nhân sự.");
     } finally {
       setLoading(false);
     }
@@ -116,7 +116,7 @@ export function ScheduleManagementScreen() {
         setWeekStart(payload.weekStart);
       }
     } catch {
-      setMessage("Khong tai duoc lich lam viec.");
+      setMessage("Không tải được lịch làm việc.");
     } finally {
       setLoading(false);
     }
@@ -150,18 +150,18 @@ export function ScheduleManagementScreen() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.message ?? "Khong luu duoc lich lam viec.");
+        throw new Error(payload.message ?? "Không lưu được lịch làm việc.");
       }
 
       setMessage(
         scheduleScope === "week_override"
-          ? "Da luu override cho tuan duoc chon."
-          : "Da cap nhat lich mac dinh.",
+          ? "Đã lưu lịch thay đổi cho tuần đã chọn."
+          : "Đã cập nhật lịch mặc định.",
       );
       await loadSchedules(selectedStaffId, scheduleScope, weekStart);
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Khong luu duoc lich lam viec.",
+        error instanceof Error ? error.message : "Không lưu được lịch làm việc.",
       );
     } finally {
       setSaving(false);
@@ -171,28 +171,14 @@ export function ScheduleManagementScreen() {
   return (
     <section className="space-y-6">
       <header className="rounded-[2rem] border border-border/80 bg-white/88 p-6 shadow-[0_18px_36px_rgba(37,28,28,0.06)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
-              Working schedule
-            </p>
-            <h1 className="font-serif text-3xl text-foreground">Cau hinh lich lam viec</h1>
-            <p className="text-sm leading-7 text-text-muted">
-              Customer availability doc active staff, lich mac dinh, va override theo
-              tuan tu cung shared data layer.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-surface px-4 py-3 text-sm text-text-muted">
-            Runtime: <span className="font-semibold text-primary">{runtimeSource}</span>
-          </div>
-        </div>
+        <h1 className="font-serif text-3xl text-foreground">Cấu hình lịch làm việc</h1>
       </header>
 
       <section className="rounded-[1.8rem] border border-border/80 bg-white/88 p-6 shadow-[0_16px_32px_rgba(37,28,28,0.05)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="grid gap-4 md:min-w-[34rem] md:grid-cols-2">
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-foreground">Chon nhan su</span>
+              <span className="text-sm font-medium text-foreground">Chọn nhân sự</span>
               <select
                 value={selectedStaffId}
                 onChange={(event) => setSelectedStaffId(event.target.value)}
@@ -201,14 +187,14 @@ export function ScheduleManagementScreen() {
                 {staff.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.displayName}
-                    {item.active ? "" : " (an)"}
+                    {item.active ? "" : " (ẩn)"}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-foreground">Pham vi chinh sua</span>
+              <span className="text-sm font-medium text-foreground">Phạm vi chỉnh sửa</span>
               <select
                 value={scheduleScope}
                 onChange={(event) =>
@@ -216,8 +202,8 @@ export function ScheduleManagementScreen() {
                 }
                 className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm"
               >
-                <option value="default">Lich mac dinh</option>
-                <option value="week_override">Override theo tuan</option>
+                <option value="default">Lịch mặc định</option>
+                <option value="week_override">Theo tuần</option>
               </select>
             </label>
           </div>
@@ -228,14 +214,14 @@ export function ScheduleManagementScreen() {
             disabled={!selectedStaffId || saving}
             className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
           >
-            {saving ? "Dang luu..." : "Luu lich"}
+            {saving ? "Đang lưu..." : "Lưu lịch"}
           </button>
         </div>
 
         {selectedStaff ? (
           <div className="mt-4 space-y-3">
             <p className="text-sm text-text-muted">
-              Dang chinh lich cho{" "}
+              Đang chỉnh lịch cho{" "}
               <span className="font-semibold text-primary">
                 {selectedStaff.displayName}
               </span>
@@ -246,12 +232,12 @@ export function ScheduleManagementScreen() {
               <div className="flex flex-col gap-3 rounded-[1.35rem] border border-border/80 bg-surface px-4 py-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">
-                    Tuan dang chon: {formatWeekRange(weekStart)}
+                    Tuần đang chọn: {formatWeekRange(weekStart)}
                   </p>
                   <p className="text-sm text-text-muted">
                     {resolvedFrom === "override"
-                      ? "Dang sua override rieng cho tuan nay."
-                      : "Chua co override. Form dang fallback tu lich mac dinh."}
+                      ? "Đang chỉnh lịch riêng cho tuần này."
+                      : "Chưa có lịch riêng cho tuần này."}
                   </p>
                 </div>
 
@@ -261,7 +247,7 @@ export function ScheduleManagementScreen() {
                     onClick={() => setWeekStart((current) => shiftWeek(current, -1))}
                     className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-text-muted"
                   >
-                    Tuan truoc
+                    Tuần trước
                   </button>
                   <input
                     type="date"
@@ -274,13 +260,13 @@ export function ScheduleManagementScreen() {
                     onClick={() => setWeekStart((current) => shiftWeek(current, 1))}
                     className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-text-muted"
                   >
-                    Tuan sau
+                    Tuần sau
                   </button>
                 </div>
               </div>
             ) : (
               <p className="text-sm leading-6 text-text-muted">
-                Lich mac dinh duoc dung lam fallback khi chua co override theo tuan.
+                Lịch mặc định được dùng khi chưa có lịch riêng theo tuần.
               </p>
             )}
           </div>
@@ -291,17 +277,17 @@ export function ScheduleManagementScreen() {
         ) : null}
 
         {loading ? (
-          <p className="mt-5 text-sm text-text-muted">Dang tai du lieu...</p>
+          <p className="mt-5 text-sm text-text-muted">Đang tải dữ liệu...</p>
         ) : (
           <div className="mt-5 overflow-hidden rounded-[1.4rem] border border-border/80">
             <table className="min-w-full divide-y divide-border/80 text-left text-sm">
               <thead className="bg-surface text-text-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Ngay</th>
-                  <th className="px-4 py-3 font-medium">Lam viec</th>
-                  <th className="px-4 py-3 font-medium">Bat dau</th>
-                  <th className="px-4 py-3 font-medium">Ket thuc</th>
-                  <th className="px-4 py-3 font-medium">Khoang nghi</th>
+                  <th className="px-4 py-3 font-medium">Ngày</th>
+                  <th className="px-4 py-3 font-medium">Làm việc</th>
+                  <th className="px-4 py-3 font-medium">Bắt đầu</th>
+                  <th className="px-4 py-3 font-medium">Kết thúc</th>
+                  <th className="px-4 py-3 font-medium">Khoảng nghỉ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/70 bg-white">
@@ -323,7 +309,7 @@ export function ScheduleManagementScreen() {
                             )
                           }
                         />
-                        {row.isWorkingDay ? "Di lam" : "Nghi"}
+                    {row.isWorkingDay ? "Đi làm" : "Nghỉ"}
                       </label>
                     </td>
                     <td className="px-4 py-3">
